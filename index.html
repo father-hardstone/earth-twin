@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+    <meta
+      name="description"
+      content="A browser-based 3D digital twin of Earth with globe-to-street zoom, terrain, satellite imagery, and OSM-derived city detail."
+    />
+    <title>Earth Twin</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.19.1/cdn/themes/dark.css"
+    />
+    <script
+      type="module"
+      src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.19.1/cdn/shoelace-autoloader.js"
+    ></script>
+  </head>
+  <body class="sl-theme-dark">
+    <div id="landing-page" class="landing-overlay">
+      <div class="landing-content">
+        <h1>Earth Twin</h1>
+        <p>Experience our world in stunning 3D detail.</p>
+        <button id="go-to-map" class="btn-primary">Go to map</button>
+      </div>
+    </div>
+
+    <div id="app">
+      <div id="map" aria-label="Interactive 3D map of Earth"></div>
+
+      <button id="toggle-controls" class="controls-fab" aria-label="Toggle Controls">
+        <sl-icon name="sliders"></sl-icon>
+      </button>
+
+      <aside id="side-panel" class="panel glass">
+        <header class="panel-header">
+          <p class="eyebrow">Earth Twin</p>
+          <h1>Orbit to street.</h1>
+          <button id="close-controls" class="panel-close" type="button" aria-label="Close controls">
+            &times;
+          </button>
+        </header>
+
+        <section class="compact-metrics" aria-label="Viewport status">
+          <div class="metric-item">
+            <span class="label">Scale:</span>
+            <span id="zoom-label">Orbital</span>
+          </div>
+          <div class="metric-item">
+            <span class="label">Zoom:</span>
+            <span id="zoom-value">0.00</span>
+          </div>
+          <div class="metric-item">
+            <span class="label">Center:</span>
+            <span id="coords-value">0.00, 0.00</span>
+          </div>
+        </section>
+
+        <section class="control-group" aria-label="Scene controls">
+          <div class="control-header">
+            <span>Terrain exaggeration</span>
+            <strong id="terrain-value">1.15x</strong>
+          </div>
+          <sl-range
+            id="terrain-range"
+            min="1"
+            max="1.7"
+            step="0.05"
+            value="1.15"
+          ></sl-range>
+
+          <div class="control-header">
+            <span>Camera pitch</span>
+            <strong id="pitch-value">0 deg</strong>
+          </div>
+          <sl-range
+            id="pitch-range"
+            min="0"
+            max="80"
+            step="1"
+            value="0"
+          ></sl-range>
+        </section>
+
+        <section class="toggles-grid" aria-label="View controls">
+          <div class="control-row">
+            <span>Dark Matter View</span>
+            <sl-switch id="view-dark"></sl-switch>
+          </div>
+          <hr class="separator" />
+          <div class="control-row">
+            <span>Globe Projection</span>
+            <sl-switch id="proj-toggle" checked></sl-switch>
+          </div>
+          <div class="control-row">
+             <span>Real-time Terminator</span>
+             <sl-switch id="light-realtime"></sl-switch>
+          </div>
+          <div class="control-row" id="day-night-container">
+            <span>Day / Night Lights</span>
+            <sl-switch id="light-toggle"></sl-switch>
+          </div>
+          <hr class="separator" />
+          <div class="control-row">
+            <span>Cartography</span>
+            <sl-switch id="labels-toggle" checked></sl-switch>
+          </div>
+          <div class="control-row">
+            <span>Clouds</span>
+            <sl-switch id="clouds-toggle"></sl-switch>
+          </div>
+          <div class="control-row">
+            <span>Atmosphere</span>
+            <sl-switch id="atmos-toggle" checked></sl-switch>
+          </div>
+          <div class="control-row">
+            <span>Auto-spin</span>
+            <sl-switch id="spin-toggle"></sl-switch>
+          </div>
+        </section>
+
+
+        <section class="locations-section" aria-label="Featured fly-to locations">
+          <div class="section-heading">
+            <h2>Featured landings</h2>
+          </div>
+          <sl-button id="btn-geolocation" variant="primary" pill class="geo-btn">
+            <sl-icon slot="prefix" name="geo-alt"></sl-icon>
+            My Current Location
+          </sl-button>
+          <div id="locations" class="locations"></div>
+        </section>
+
+        <p class="helper">
+          Scroll to zoom, right-drag to rotate, and hold <kbd>Ctrl</kbd> while
+          dragging to tilt on desktop.
+        </p>
+      </aside>
+
+      <div id="status" class="status glass" role="status" aria-live="polite">
+        Loading Earth...
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+
+  </body>
+</html>

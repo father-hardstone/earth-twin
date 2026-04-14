@@ -1,0 +1,373 @@
+:root {
+  color-scheme: dark;
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  background:
+    radial-gradient(circle at top, rgba(85, 138, 255, 0.18), transparent 42%),
+    linear-gradient(180deg, #050913 0%, #02050b 100%);
+  color: #eef4ff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app,
+#map {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  overflow: hidden;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+#app {
+  position: relative;
+}
+
+#map {
+  background:
+    radial-gradient(circle at 30% 20%, rgba(66, 108, 194, 0.25), transparent 36%),
+    radial-gradient(circle at 70% 30%, rgba(123, 71, 255, 0.2), transparent 42%),
+    linear-gradient(180deg, #03070f 0%, #071121 100%);
+}
+
+.glass {
+  background: rgba(7, 14, 24, 0.7);
+  border: 1px solid rgba(173, 197, 255, 0.18);
+  box-shadow:
+    0 24px 50px rgba(0, 0, 0, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(22px);
+}
+
+/* --- UI Enhancements --- */
+
+/* Custom Scrollbar */
+.panel::-webkit-scrollbar {
+  width: 6px;
+}
+
+.panel::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.panel::-webkit-scrollbar-thumb {
+  background: rgba(140, 198, 255, 0.2);
+  border-radius: 10px;
+}
+
+.panel::-webkit-scrollbar-thumb:hover {
+  background: rgba(140, 198, 255, 0.4);
+}
+
+/* Landing Page Overlay */
+.landing-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at center, rgba(13, 22, 38, 0.95), #03070f);
+  backdrop-filter: blur(8px);
+  transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.8s;
+  color: white;
+  text-align: center;
+}
+
+.landing-overlay.fade-out {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.landing-content h1 {
+  font-size: clamp(3rem, 8vw, 6rem);
+  margin-bottom: 1rem;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, #fff 30%, #a5c7ff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.landing-content p {
+  font-size: 1.25rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 3rem;
+}
+
+.btn-primary {
+  padding: 1.2rem 3rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #03070f;
+  background: #fff;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: transform 0.2s, background 0.2s, box-shadow 0.2s;
+  box-shadow: 0 10px 30px rgba(255, 255, 255, 0.1);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  background: #eef4ff;
+  box-shadow: 0 15px 40px rgba(165, 199, 255, 0.2);
+}
+
+/* Side Panel Pinned to Left */
+.panel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 25rem;
+  max-width: 100vw;
+  padding: 2rem 1.5rem;
+  border-radius: 0;
+  border-left: none;
+  border-top: none;
+  border-bottom: none;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  overflow-y: auto;
+  z-index: 10;
+  transform: translateX(0);
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.panel.is-hidden {
+  transform: translateX(-100%);
+}
+
+.panel-header h1 {
+  font-size: 1.75rem;
+  margin-top: 0.5rem;
+}
+
+.panel-header {
+  position: relative;
+}
+
+.panel-close {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.25rem;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 10px;
+  border: 1px solid rgba(173, 197, 255, 0.18);
+  background: rgba(13, 22, 38, 0.55);
+  color: rgba(240, 246, 255, 0.92);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  font-size: 1.65rem;
+  line-height: 1;
+  padding: 0;
+}
+
+.panel-close:hover {
+  background: rgba(30, 45, 75, 0.75);
+  border-color: rgba(173, 197, 255, 0.32);
+}
+
+/* Map landing markers (circular highlight). */
+.city-marker {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.city-marker > span {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  border: 1px solid rgba(170, 210, 255, 0.55);
+  box-shadow:
+    0 0 0 6px rgba(60, 160, 255, 0.14),
+    0 0 20px rgba(60, 160, 255, 0.25);
+}
+
+.city-marker:hover > span {
+  background: rgba(255, 255, 255, 0.32);
+  box-shadow:
+    0 0 0 7px rgba(60, 160, 255, 0.18),
+    0 0 26px rgba(60, 160, 255, 0.32);
+}
+
+/* Controls FAB */
+.controls-fab {
+  position: absolute;
+  top: 1.25rem;
+  left: 1.25rem;
+  z-index: 20;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 12px;
+  background: rgba(13, 22, 38, 0.8);
+  border: 1px solid rgba(173, 197, 255, 0.2);
+  color: #fff;
+  backdrop-filter: blur(10px);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.controls-fab:hover {
+  background: rgba(30, 45, 75, 0.9);
+  border-color: rgba(173, 197, 255, 0.4);
+}
+
+.controls-fab sl-icon {
+  font-size: 1.5rem;
+}
+
+/* Toggles Grid */
+.toggles-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.control-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.25rem 0;
+}
+
+.control-row span {
+  font-size: 0.95rem;
+  color: rgba(228, 235, 255, 0.85);
+}
+
+.separator {
+  border: none;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 0.5rem 0;
+}
+
+sl-switch::part(control) {
+  --sl-color-primary-600: #74b1ff;
+}
+
+#day-night-container.disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.compact-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.metric-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+}
+
+.metric-item .label {
+  color: rgba(255, 255, 255, 0.4);
+  font-weight: 500;
+}
+
+.metric-item span:not(.label) {
+  color: #fff;
+  font-family: monospace;
+}
+
+.locations-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.geo-btn {
+  width: 100%;
+  margin-bottom: 0.5rem;
+}
+
+.geo-btn::part(base) {
+  --sl-color-primary-600: #74b1ff;
+  --sl-color-primary-500: #569aff;
+}
+
+/* Featured Landing "Button" Cards with Shoelace */
+.location-card-btn {
+  width: 100%;
+}
+
+.location-card-btn::part(base) {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(159, 188, 255, 0.15);
+  height: auto;
+  padding: 0.5rem 0;
+  transition: all 0.2s;
+}
+
+.location-card-btn:hover::part(base) {
+  background: rgba(140, 198, 255, 0.08);
+  border-color: rgba(140, 198, 255, 0.4);
+}
+
+.btn-content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  padding: 0.4rem 0.8rem;
+  text-align: left;
+}
+
+.btn-content strong {
+  font-size: 0.95rem;
+  color: #fff;
+}
+
+.btn-content span {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.5);
+  white-space: normal;
+  line-height: 1.3;
+}
+
+@media (max-width: 600px) {
+  .panel {
+    width: 100vw;
+  }
+}
