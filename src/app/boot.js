@@ -4,19 +4,19 @@ import { FEATURED_LOCATIONS } from './constants.js';
 import { updateHud } from './hud.js';
 import { updateTerrainForZoom } from './terrain.js';
 import { scheduleSpin } from './spin.js';
-import {
-  addLocationMarker,
-  renderLocationButtons
-} from './locations.js';
-import { applyCommonScene } from './scene.js';
+import { addLocationMarker, renderLocationButtons } from './locations.js';
+import { applyCommonScene, setOverlayVisibility } from './scene.js';
 import { bindUi } from './uiBindings.js';
 import { registerMapEvents } from './mapEvents.js';
 import { enableRtlText } from '../services/rtl.js';
+import { initRouter } from './router.js';
+import { initAuroraEffect } from './aurora.js';
 
 export async function boot() {
   const ctx = createAppContext();
   const { state, elements } = ctx;
 
+  initAuroraEffect();
   renderLocationButtons(ctx);
   elements.status.textContent = 'Loading 3D renderer...';
 
@@ -24,8 +24,8 @@ export async function boot() {
   ctx.maplibregl = maplibreModule.default;
   enableRtlText(ctx.maplibregl);
 
-  elements.status.textContent = 'Loading Earth...';
-  const styleBundle = await createStyleBundle(state.currentView);
+  elements.status.textContent = 'Loading Twin Earth...';
+  const styleBundle = await createStyleBundle(state.currentView, state.labelsVisible);
 
   state.overlayLayerIds = styleBundle.overlayLayerIds;
   state.inspectableLayerIds = styleBundle.inspectableLayerIds;
@@ -49,7 +49,9 @@ export async function boot() {
     // Globe projection ignores this setting.
     renderWorldCopies: true,
     maxPitch: 85,
-    cancelPendingTileRequestsWhileZooming: true
+    cancelPendingTileRequestsWhileZooming: true,
+    // Add alpha channel support if possible (though mostly handled by container)
+    transformRequest: (url) => ({ url })
   });
 
   const { map, maplibregl } = ctx;
@@ -71,13 +73,21 @@ export async function boot() {
     'bottom-right'
   );
 
-  bindUi(ctx);
+  const router = initRouter(ctx);
+  bindUi(ctx, router);
   registerMapEvents(ctx);
 
   map.on('load', () => {
     applyCommonScene(ctx);
+    setOverlayVisibility(ctx, state.labelsVisible); // Ensure initial visibility matches state
+    
     elements.status.textContent =
-      styleBundle.statusMessage ?? 'Earth is ready - pick a landing or zoom anywhere.';
+      styleBundle.statusMessage ?? 'Twin Earth is ready.';
+    
+    // Hide initial loader if it exists
+    const loader = document.querySelector('#initial-loader');
+    if (loader) loader.classList.add('is-hidden');
+
     window.setTimeout(() => {
       elements.status.classList.add('is-hidden');
     }, 1800);
@@ -87,4 +97,15 @@ export async function boot() {
     updateTerrainForZoom(ctx);
     scheduleSpin(ctx);
   });
+
+  // Fail-safe: Ensure loader disappears even if map load stalls
+  window.setTimeout(() => {
+    const loader = document.querySelector('#initial-loader');
+    if (loader && !loader.classList.contains('is-hidden')) {
+      console.warn('Map load timeout: hiding loader manually');
+      loader.classList.add('is-hidden');
+      elements.status.textContent = 'Twin Earth is ready (Offline mode)';
+      window.setTimeout(() => elements.status.classList.add('is-hidden'), 2000);
+    }
+  }, 10000);
 }

@@ -5,6 +5,7 @@ import { applyLighting } from '../services/night.js';
 
 export function applyCommonScene(ctx) {
   const { map, state } = ctx;
+  if (!map.isStyleLoaded()) return;
   map.setProjection({ type: state.projection === 'flat' ? 'mercator' : 'globe' });
 
   if (typeof map.setSky === 'function') {
@@ -14,15 +15,22 @@ export function applyCommonScene(ctx) {
   if (typeof map.setFog === 'function') {
     if (state.atmosphereEnabled) {
       map.setFog({
-        color: 'rgb(214, 227, 255)',
-        'high-color': 'rgb(36, 92, 223)',
-        'horizon-blend': 0.18,
-        'space-color': 'rgb(4, 7, 14)',
-        'star-intensity': 0.18
+        color: 'rgb(20, 35, 50)', // Soft horizon glow
+        'high-color': 'rgba(0, 0, 0, 0)',
+        'horizon-blend': 0.3, // Very smooth edge transition
+        'space-color': 'rgba(0, 0, 0, 0)',
+        'star-intensity': 0
       });
     } else {
       map.setFog(null);
     }
+    
+    // Manage background transparency
+    try {
+      const layers = map.getStyle().layers;
+      const bg = layers.find(l => l.type === 'background');
+      if (bg) map.setPaintProperty(bg.id, 'background-opacity', 0);
+    } catch (e) {}
   }
 
   if (state.cloudsEnabled) {

@@ -8,7 +8,7 @@ export function createAppState() {
     realtimeLightingEnabled: false,
     terrainEnabled: false,
     terrainExaggeration: 1.15,
-    labelsVisible: true,
+    labelsVisible: false,
     autoSpin: false,
     cloudsEnabled: false,
     cloudsAnimating: true,

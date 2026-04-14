@@ -15,6 +15,10 @@ export function registerMapEvents(ctx) {
     }
   });
 
+  map.on('move', () => {
+    updateHud(ctx);
+  });
+
   map.on('moveend', () => {
     state.interacting = false;
     updateHud(ctx);

@@ -8,12 +8,30 @@ import { switchView } from './viewSwitch.js';
 import { setCloudsEnabled } from '../services/clouds.js';
 import { applyLighting } from '../services/night.js';
 
-export function bindUi(ctx) {
+export function bindUi(ctx, router) {
   const { elements, state } = ctx;
 
-  // --- Landing Page ---
-  elements.goToMapBtn.addEventListener('click', () => {
-    elements.landingPage.classList.add('fade-out');
+  // --- Landing Page & Navigation ---
+  if (elements.goToMapHeroBtn) {
+    elements.goToMapHeroBtn.addEventListener('click', () => {
+      router.navigate('/map');
+    });
+  }
+
+  if (elements.goToMapNavBtn) {
+    elements.goToMapNavBtn.addEventListener('click', () => {
+      router.navigate('/map');
+    });
+  }
+
+  elements.backToLandingBtn.addEventListener('click', () => {
+    router.navigate('/landing');
+  });
+
+  // Handle Landing Page Scroll (Toggle Header)
+  elements.landingPage.addEventListener('scroll', () => {
+    const isScrolled = elements.landingPage.scrollTop > 100;
+    elements.landingHeader.classList.toggle('scrolled', isScrolled);
   });
 
   // --- Controls Toggle ---

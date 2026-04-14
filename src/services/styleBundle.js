@@ -19,20 +19,20 @@ export const VIEW = {
   DARK: 'dark'
 };
 
-export async function createStyleBundle(view) {
+export async function createStyleBundle(view, initialVisibility = true) {
   if (view === VIEW.POSITRON) {
-    return buildVectorBasemapBundle(CARTO_POSITRON_STYLE_URL);
+    return buildVectorBasemapBundle(CARTO_POSITRON_STYLE_URL, initialVisibility);
   }
   if (view === VIEW.DARK) {
-    return buildVectorBasemapBundle(CARTO_DARK_MATTER_STYLE_URL);
+    return buildVectorBasemapBundle(CARTO_DARK_MATTER_STYLE_URL, initialVisibility);
   }
-  return buildSatelliteHybridBundle();
+  return buildSatelliteHybridBundle(initialVisibility);
 }
 
-async function buildSatelliteHybridBundle() {
+async function buildSatelliteHybridBundle(initialVisibility) {
   try {
     const referenceStyle = await fetchJson(OPEN_FREEMAP_STYLE_URL);
-    return buildHybridStyle(referenceStyle, OPEN_FREEMAP_STYLE_URL);
+    return buildHybridStyle(referenceStyle, OPEN_FREEMAP_STYLE_URL, initialVisibility);
   } catch (error) {
     console.warn('Falling back to satellite + terrain only:', error);
     return {
@@ -43,14 +43,12 @@ async function buildSatelliteHybridBundle() {
   }
 }
 
-async function buildVectorBasemapBundle(styleUrl) {
+async function buildVectorBasemapBundle(styleUrl, initialVisibility) {
   const baseStyle = await fetchJson(styleUrl);
   const terrainSource = createTerrainSource();
 
   const style = {
     ...baseStyle,
-    glyphs: ensureGlyphsUrl(baseStyle.glyphs, styleUrl),
-    sprite: ensureStringUrl(baseStyle.sprite, styleUrl),
     sources: {
       ...(baseStyle.sources ?? {}),
       [TERRAIN_SOURCE_ID]: terrainSource
@@ -67,7 +65,7 @@ async function buildVectorBasemapBundle(styleUrl) {
   };
 }
 
-function buildHybridStyle(referenceStyle, baseUrl) {
+function buildHybridStyle(referenceStyle, baseUrl, initialVisibility) {
   const satelliteSource = createSatelliteSource();
   const terrainSource = createTerrainSource();
 
@@ -82,17 +80,33 @@ function buildHybridStyle(referenceStyle, baseUrl) {
   const overlayLayers = (referenceStyle.layers ?? [])
     .filter((layer) => layer.source === vectorSourceId)
     .filter((layer) => keepOverlayLayer(layer))
-    .map((layer) => tuneOverlayLayer(layer));
+    .map((layer) => {
+      const tuned = tuneOverlayLayer(layer);
+      return {
+        ...tuned,
+        layout: {
+          ...(tuned.layout ?? {}),
+          visibility: initialVisibility ? 'visible' : 'none'
+        }
+      };
+    });
 
   const lineLayers = overlayLayers.filter((layer) => layer.type === 'line');
   const symbolLayers = overlayLayers.filter((layer) => layer.type !== 'line');
-  const overlayLayerIds = overlayLayers.map((layer) => layer.id);
+  const overlayLayerIds = [...overlayLayers.map((layer) => layer.id)];
   const inspectableLayerIds = computeInspectableLayers(symbolLayers);
+
+  const buildingsLayer = createBuildingsLayer(vectorSourceId);
+  // Buildings are NOT dependent on cartography toggle, so they stay visible
+  buildingsLayer.layout = {
+    ...(buildingsLayer.layout ?? {}),
+    visibility: 'visible'
+  };
 
   return {
     style: {
       version: 8,
-      name: 'Earth Twin Hybrid',
+      name: 'Twin Earth Hybrid',
       glyphs: ensureGlyphsUrl(referenceStyle.glyphs, baseUrl),
       sprite: ensureStringUrl(referenceStyle.sprite, baseUrl),
       sources: {
@@ -111,7 +125,7 @@ function buildHybridStyle(referenceStyle, baseUrl) {
           }
         },
         ...lineLayers,
-        ...(vectorSource ? [createBuildingsLayer(vectorSourceId)] : []),
+        ...(vectorSource ? [buildingsLayer] : []),
         ...symbolLayers
       ]
     },
@@ -128,7 +142,7 @@ function buildFallbackStyle() {
   return {
     style: {
       version: 8,
-      name: 'Earth Twin Fallback',
+      name: 'Twin Earth Fallback',
       sources: {
         [SATELLITE_SOURCE_ID]: satelliteSource,
         [TERRAIN_SOURCE_ID]: terrainSource

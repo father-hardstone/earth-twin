@@ -35,7 +35,7 @@ export async function switchView(ctx, view) {
     if (elements.lightToggle) elements.lightToggle.checked = false;
   }
 
-  const bundle = await createStyleBundle(view);
+  const bundle = await createStyleBundle(view, state.labelsVisible);
   state.overlayLayerIds = bundle.overlayLayerIds;
   state.inspectableLayerIds = bundle.inspectableLayerIds;
   state.supportsCartographyToggle = bundle.supportsCartographyToggle;

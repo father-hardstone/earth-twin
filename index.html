@@ -10,7 +10,26 @@
       name="description"
       content="A browser-based 3D digital twin of Earth with globe-to-street zoom, terrain, satellite imagery, and OSM-derived city detail."
     />
-    <title>Earth Twin</title>
+    <title>Twin Earth | Interactive 3D Digital Twin</title>
+    <link rel="icon" type="image/png" href="/src/assets/icons/earth-icon.png" />
+    
+    <!-- Metadata & SEO -->
+    <meta name="title" content="Twin Earth | Interactive 3D Digital Twin" />
+    <meta name="description" content="Explore a stunning, real-time 3D digital twin of our planet. High-resolution satellite imagery, 3D buildings, and terrain zoomable from orbit to street level." />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://twin-earth.app" />
+    <meta property="og:title" content="Twin Earth | Interactive 3D Digital Twin" />
+    <meta property="og:description" content="Explore a stunning, real-time 3D digital twin of our planet. From deep space to street level." />
+    <meta property="og:image" content="/src/assets/images/twin-earth-background.webp" />
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://twin-earth.app" />
+    <meta property="twitter:title" content="Twin Earth | Interactive 3D Digital Twin" />
+    <meta property="twitter:description" content="Explore a stunning, real-time 3D digital twin of our planet. From deep space to street level." />
+    <meta property="twitter:image" content="/src/assets/images/twin-earth-background.webp" />
     <link
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.19.1/cdn/themes/dark.css"
@@ -22,14 +41,104 @@
   </head>
   <body class="sl-theme-dark">
     <div id="landing-page" class="landing-overlay">
-      <div class="landing-content">
-        <h1>Earth Twin</h1>
-        <p>Experience our world in stunning 3D detail.</p>
-        <button id="go-to-map" class="btn-primary">Go to map</button>
+      <div class="landing-scroll-container">
+        <header id="landing-header" class="landing-header">
+          <div class="header-inner">
+            <h1 class="brand-logo">Twin Earth</h1>
+            <button id="go-to-map-nav" class="btn-primary mini-btn">Go to map</button>
+          </div>
+        </header>
+
+        <section class="hero-section">
+          <div class="hero-content">
+            <h1 class="brand-logo mega-logo">Twin Earth</h1>
+            <p class="hero-tagline">A real-time 3D digital twin of Earth.</p>
+            <button id="go-to-map-hero" class="btn-primary mega-btn">Go to map</button>
+          </div>
+        </section>
+
+        <section class="content-section full-bleed-grid" id="about-idea">
+          <div class="text-side">
+            <h2 class="reveal-item">About the Idea</h2>
+            <p class="reveal-item" style="--delay: 1">
+              The Artemis II mission serves as a silent, powerful reminder of our place 
+              in the cosmos. As the Orion capsule arcs around the lunar far side, 
+              the view of Earth rising over the moon’s desolate horizon offers a 
+              perspective of profound fragility and interconnectedness. This project 
+              draws its life from that silver lunar light and the deep, velvet 
+              stillness of space.
+            </p>
+            <p class="reveal-item" style="--delay: 2">
+              Every line and visual here is a tribute to that celestial journey. It 
+              is an attempt to capture the "overview effect"—that moment when 
+              borders vanish and all that remains is a radiant, swirling marble 
+              pulsing against the dark. This is a space built for those who still 
+              look up and find wonder in the reach toward the unknown.
+            </p>
+          </div>
+          <div class="image-side reveal-item" style="--delay: 3">
+            <img src="/src/assets/images/earth-from-artimis.png" alt="View of Earth from Lunar Orbit" class="artemis-full-img" />
+          </div>
+        </section>
+
+        <section class="content-section full-bleed-grid" id="about-me">
+          <div class="image-side reveal-item spec-sheet-side" style="--delay: 1">
+            <img
+              src="/src/assets/images/engg-spec-sheet.png"
+              alt="Engineering specification sheet"
+              class="artemis-full-img spec-sheet-cover"
+            />
+          </div>
+
+          <div class="text-side">
+            <h2 class="reveal-item">About Me</h2>
+            <p class="reveal-item" style="--delay: 1">
+              I’m a software engineer with an artistic heart and a chronic habit of
+              over-engineering anything that moves. My work lives at the intersection
+              of rigid logic and the expansive, quiet wonder of the night sky. I
+              don't just build tools; I craft digital environments where technical
+              precision meets a distinct visual soul.
+            </p>
+            <p class="reveal-item" style="--delay: 2">
+              Whether I’m architecting a complex system or refining a
+              micro-interaction, I treat every project like a mission to the stars.
+              To me, "good enough" is a missed opportunity to reach a little further
+              into the dark and pull back something brilliant.
+            </p>
+
+            <div class="about-links reveal-item" style="--delay: 3" aria-label="Contact links">
+              <a class="icon-link" href="mailto:syedibrahimshah067@gmail.com" aria-label="Email syedibrahimshah067@gmail.com">
+                <sl-icon name="envelope"></sl-icon>
+                <span>syedibrahimshah067@gmail.com</span>
+              </a>
+              <a class="icon-link" href="https://instagram.com/syed_ahmedibrahim" target="_blank" rel="noreferrer" aria-label="Instagram syed_ahmedibrahim">
+                <sl-icon name="instagram"></sl-icon>
+                <span>syed_ahmedibrahim</span>
+              </a>
+              <a class="icon-link" href="https://github.com/father_hardstone" target="_blank" rel="noreferrer" aria-label="GitHub father_hardstone">
+                <sl-icon name="github"></sl-icon>
+                <span>father_hardstone</span>
+              </a>
+            </div>
+          </div>
+        </section>
+
+        <footer class="landing-footer">
+          <div class="container">
+            <p>&copy; 2026 Twin Earth Project.</p>
+            <p class="credit">
+              Made by <a href="https://github.com/father-hardstone" target="_blank">father-hardstone</a> on GitHub
+            </p>
+          </div>
+        </footer>
       </div>
     </div>
 
     <div id="app">
+      <div id="initial-loader" class="map-loader">
+        <sl-spinner></sl-spinner>
+        <span>Initializing Twin Earth...</span>
+      </div>
       <div id="map" aria-label="Interactive 3D map of Earth"></div>
 
       <button id="toggle-controls" class="controls-fab" aria-label="Toggle Controls">
@@ -38,8 +147,7 @@
 
       <aside id="side-panel" class="panel glass">
         <header class="panel-header">
-          <p class="eyebrow">Earth Twin</p>
-          <h1>Orbit to street.</h1>
+          <h1 id="back-to-landing" class="brand-logo brand-link">Twin Earth</h1>
           <button id="close-controls" class="panel-close" type="button" aria-label="Close controls">
             &times;
           </button>
@@ -107,7 +215,7 @@
           <hr class="separator" />
           <div class="control-row">
             <span>Cartography</span>
-            <sl-switch id="labels-toggle" checked></sl-switch>
+            <sl-switch id="labels-toggle"></sl-switch>
           </div>
           <div class="control-row">
             <span>Clouds</span>
@@ -142,7 +250,7 @@
       </aside>
 
       <div id="status" class="status glass" role="status" aria-live="polite">
-        Loading Earth...
+        Loading Twin Earth...
       </div>
     </div>
 

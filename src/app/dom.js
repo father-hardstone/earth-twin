@@ -24,7 +24,10 @@ export function getDomRefs() {
     toggleControls: document.querySelector('#toggle-controls'),
     closeControls: document.querySelector('#close-controls'),
     landingPage: document.querySelector('#landing-page'),
-    goToMapBtn: document.querySelector('#go-to-map'),
+    landingHeader: document.querySelector('#landing-header'),
+    goToMapHeroBtn: document.querySelector('#go-to-map-hero'),
+    goToMapNavBtn: document.querySelector('#go-to-map-nav'),
+    backToLandingBtn: document.querySelector('#back-to-landing'),
     btnGeolocation: document.querySelector('#btn-geolocation'),
     dayNightContainer: document.querySelector('#day-night-container'),
     

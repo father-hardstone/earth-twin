@@ -327,7 +327,8 @@ function getSubsolarPoint(date) {
 
   const utcMinutes = date.getUTCHours() * 60 + date.getUTCMinutes() + date.getUTCSeconds() / 60;
   const solarTimeMinutes = (utcMinutes + eqTime) % 1440;
-  let subLon = solarTimeMinutes / 4 - 180;
+  let subLon = (720 - solarTimeMinutes) / 4;
+  if (subLon > 180) subLon -= 360;
   if (subLon < -180) subLon += 360;
 
   return { lat: rad2deg(dec), lon: subLon };
