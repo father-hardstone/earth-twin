@@ -23,6 +23,7 @@ export function createAppState() {
     overlayLayerIds: [],
     inspectableLayerIds: [],
     supportsCartographyToggle: true,
-    popup: null
+    popup: null,
+    locationMarkers: []
   };
 }
