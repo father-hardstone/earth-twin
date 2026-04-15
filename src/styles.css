@@ -54,9 +54,7 @@ input {
   border: 0;
   background: transparent;
   cursor: pointer;
-  z-index: 9999 !important; /* Always on top */
-  display: block !important;
-  visibility: visible !important;
+  z-index: 9999; /* Always on top */
 }
 
 .glass {
@@ -705,6 +703,10 @@ input {
 }
 
 /* Map landing markers (circular highlight). */
+.labels-hidden .city-marker {
+  display: none;
+}
+
 .city-marker {
   width: 18px;
   height: 18px;

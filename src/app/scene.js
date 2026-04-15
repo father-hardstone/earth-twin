@@ -2,7 +2,6 @@ import { SKY } from './constants.js';
 import { VIEW } from '../services/styleBundle.js';
 import { setCloudsEnabled, startCloudsAnimation, updateCloudsForZoom } from '../services/clouds.js';
 import { applyLighting } from '../services/night.js';
-import { setLocationMarkersVisibility } from './locations.js';
 
 export function applyCommonScene(ctx) {
   const { map, state } = ctx;
@@ -53,7 +52,21 @@ export function setOverlayVisibility(ctx, visible) {
     }
   });
 
-  setLocationMarkersVisibility(ctx, enabled);
+  // Location markers are DOM-based (MapLibre Markers), so they aren't affected by style layers.
+  // Keep them in sync with the cartography toggle.
+  if (Array.isArray(ctx.locationMarkers)) {
+    ctx.locationMarkers.forEach((marker) => {
+      try {
+        const el = marker?.getElement?.();
+        if (!el) return;
+        el.setAttribute('aria-hidden', enabled ? 'false' : 'true');
+        el.style.setProperty('display', enabled ? 'block' : 'none', 'important');
+        el.style.setProperty('visibility', enabled ? 'visible' : 'hidden', 'important');
+      } catch (e) {}
+    });
+  }
+
+  document.body.classList.toggle('labels-hidden', !enabled);
 }
 
 export function syncToggleState(ctx) {

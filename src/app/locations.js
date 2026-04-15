@@ -40,15 +40,11 @@ export function addLocationMarker(ctx, location) {
     .setLngLat(location.center)
     .addTo(map);
 
-  ctx.state.locationMarkers.push(marker);
-}
+  if (Array.isArray(ctx.locationMarkers)) {
+    ctx.locationMarkers.push(marker);
+  }
 
-export function setLocationMarkersVisibility(ctx, visible) {
-  const { state } = ctx;
-  const display = visible ? 'block' : 'none';
-  state.locationMarkers.forEach((marker) => {
-    marker.getElement().style.display = display;
-  });
+  return marker;
 }
 
 export function flyToLocation(ctx, location) {

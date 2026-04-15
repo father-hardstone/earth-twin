@@ -10,6 +10,7 @@ export function createAppContext() {
     state: createAppState(),
     elements: getDomRefs(),
     maplibregl: null,
-    map: null
+    map: null,
+    locationMarkers: []
   };
 }
