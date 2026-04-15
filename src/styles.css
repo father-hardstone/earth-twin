@@ -766,6 +766,12 @@ input {
   font-size: 1.5rem;
 }
 
+.controls-fab svg {
+  width: 1.5rem;
+  height: 1.5rem;
+  display: block;
+}
+
 /* Toggles Grid */
 .toggles-grid {
   display: flex;

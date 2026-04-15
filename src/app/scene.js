@@ -3,33 +3,73 @@ import { VIEW } from '../services/styleBundle.js';
 import { setCloudsEnabled, startCloudsAnimation, updateCloudsForZoom } from '../services/clouds.js';
 import { applyLighting } from '../services/night.js';
 
+export function enforceOrientationConstraints(ctx) {
+  const { map, state, elements } = ctx;
+  const lock = state.projection === 'flat' || state.currentView === VIEW.DARK;
+
+  if (!map) return;
+
+  // Ensure drag interaction is enabled (unless explicitly disabled elsewhere).
+  try {
+    map.dragPan?.enable?.();
+  } catch (e) {}
+
+  if (lock) {
+    try {
+      map.jumpTo({ bearing: 0, pitch: 0 });
+    } catch (e) {}
+
+    try {
+      map.dragRotate?.disable?.();
+      map.touchZoomRotate?.disableRotation?.();
+    } catch (e) {}
+
+    if (elements?.pitchRange) {
+      elements.pitchRange.disabled = true;
+      elements.pitchRange.value = 0;
+    }
+    if (elements?.pitchValue) {
+      elements.pitchValue.textContent = '0 deg';
+    }
+  } else {
+    if (elements?.pitchRange) {
+      elements.pitchRange.disabled = false;
+    }
+  }
+}
+
 export function applyCommonScene(ctx) {
   const { map, state } = ctx;
-  if (!map.isStyleLoaded()) return;
-  map.setProjection({ type: state.projection === 'flat' ? 'mercator' : 'globe' });
+  if (!map || !map.isStyleLoaded()) return;
 
-  if (typeof map.setSky === 'function') {
-    map.setSky(SKY);
+  // Apply projection. Some versions of MapLibre ignore the initial constructor option
+  // or require it to be reapplied after the style has loaded.
+  const targetProj = state.projection === 'flat' ? 'mercator' : 'globe';
+  const currentProj = map.getProjection()?.type || 'mercator';
+
+  if (currentProj !== targetProj) {
+    try {
+      map.setProjection({ type: targetProj });
+    } catch (e) {
+      console.warn('Failed to set projection:', e);
+    }
   }
 
-  if (typeof map.setFog === 'function') {
+  if (typeof map.setSky === 'function') {
     if (state.atmosphereEnabled) {
-      map.setFog({
-        color: 'rgb(20, 35, 50)', // Soft horizon glow
-        'high-color': 'rgba(0, 0, 0, 0)',
-        'horizon-blend': 0.3, // Very smooth edge transition
-        'space-color': 'rgba(0, 0, 0, 0)',
-        'star-intensity': 0
-      });
+      map.setSky(SKY);
     } else {
-      map.setFog(null);
+      // In MapLibre, an empty object or zeroed values clears the sky/atmosphere
+      map.setSky({});
     }
     
-    // Manage background transparency
+    // Manage background transparency to ensure the space/stars are visible
     try {
       const layers = map.getStyle().layers;
       const bg = layers.find(l => l.type === 'background');
-      if (bg) map.setPaintProperty(bg.id, 'background-opacity', 0);
+      if (bg) {
+        map.setPaintProperty(bg.id, 'background-opacity', state.atmosphereEnabled ? 0 : 1);
+      }
     } catch (e) {}
   }
 
@@ -40,7 +80,9 @@ export function applyCommonScene(ctx) {
   }
 
   applyLighting(ctx);
+  enforceOrientationConstraints(ctx);
 }
+
 
 export function setOverlayVisibility(ctx, visible) {
   const { map, state } = ctx;

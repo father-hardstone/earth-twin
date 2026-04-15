@@ -47,12 +47,14 @@ export function bindUi(ctx, router) {
 
   // --- Range Controls ---
   elements.terrainRange.addEventListener('sl-input', (event) => {
+    if (!ctx.map) return;
     state.terrainExaggeration = Number(event.target.value);
     elements.terrainValue.textContent = `${state.terrainExaggeration.toFixed(2)}x`;
     scheduleTerrainUpdate(ctx);
   });
 
   elements.pitchRange.addEventListener('sl-input', (event) => {
+    if (!ctx.map) return;
     const pitch = Number(event.target.value);
     elements.pitchValue.textContent = `${pitch.toFixed(0)} deg`;
     schedulePitchUpdate(ctx, pitch);
@@ -62,6 +64,7 @@ export function bindUi(ctx, router) {
   
   // Real-time Terminator & Night Lights Logic
   const updateLightingUI = () => {
+    if (!ctx.map) return;
     const isRealtime = elements.lightRealtime.checked;
     state.realtimeLightingEnabled = isRealtime;
     
@@ -79,18 +82,21 @@ export function bindUi(ctx, router) {
   elements.lightRealtime.addEventListener('sl-change', updateLightingUI);
   
   elements.lightToggle.addEventListener('sl-change', (event) => {
+    if (!ctx.map) return;
     state.lighting = event.target.checked ? 'night' : 'day';
     applyLighting(ctx);
   });
 
   // Views (Dark Matter View toggle switches between Dark and Satellite basemaps)
   elements.viewDark.addEventListener('sl-change', (event) => {
+    if (!ctx.map) return;
     const view = event.target.checked ? VIEW.DARK : VIEW.SATELLITE;
     switchView(ctx, view);
   });
 
   // Projection
   elements.projToggle.addEventListener('sl-change', (event) => {
+    if (!ctx.map) return;
     state.projection = event.target.checked ? 'globe' : 'flat';
     applyCommonScene(ctx);
     syncProjectionState(ctx);
@@ -98,21 +104,25 @@ export function bindUi(ctx, router) {
 
   // Layers
   elements.labelsToggle.addEventListener('sl-change', (event) => {
+    if (!ctx.map) return;
     state.labelsVisible = event.target.checked;
     setOverlayVisibility(ctx, state.labelsVisible);
     syncToggleState(ctx);
   });
 
   elements.cloudsToggle.addEventListener('sl-change', (event) => {
+    if (!ctx.map) return;
     setCloudsEnabled(ctx, event.target.checked);
   });
 
   elements.atmosToggle.addEventListener('sl-change', (event) => {
+    if (!ctx.map) return;
     state.atmosphereEnabled = event.target.checked;
     applyCommonScene(ctx);
   });
 
   elements.spinToggle.addEventListener('sl-change', (event) => {
+    if (!ctx.map) return;
     state.autoSpin = event.target.checked;
     if (state.autoSpin) {
       scheduleSpin(ctx);
@@ -123,6 +133,7 @@ export function bindUi(ctx, router) {
 
   // --- Geolocation ---
   elements.btnGeolocation.addEventListener('click', () => {
+    if (!ctx.map) return;
     if (!navigator.geolocation) {
       alert('Geolocation is not supported by your browser');
       return;
@@ -158,10 +169,29 @@ export function bindUi(ctx, router) {
     if (location) flyToLocation(ctx, location);
   });
 
-  // Initial Sync
-  updateLightingUI();
-  syncProjectionState(ctx);
-  syncViewState(ctx);
-  syncToggleState(ctx);
+  // Initial Sync Logic
+  ctx.syncUiToState = () => {
+    updateLightingUI();
+    syncProjectionState(ctx);
+    syncViewState(ctx);
+    syncToggleState(ctx);
+    
+    // Explicitly sync extra toggles not handled by specific sync helpers
+    if (elements.atmosToggle) {
+      elements.atmosToggle.checked = state.atmosphereEnabled;
+    }
+    if (elements.cloudsToggle) {
+      elements.cloudsToggle.checked = state.cloudsEnabled;
+    }
+    if (elements.spinToggle) {
+      elements.spinToggle.checked = state.autoSpin;
+    }
+  };
+
+
+  if (ctx.map) {
+    ctx.syncUiToState();
+  }
   setPanelOpen(false);
 }
+
