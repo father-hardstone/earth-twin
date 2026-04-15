@@ -79,11 +79,12 @@ export async function boot() {
 
   map.on('load', () => {
     applyCommonScene(ctx);
+    FEATURED_LOCATIONS.forEach((location) => addLocationMarker(ctx, location));
     setOverlayVisibility(ctx, state.labelsVisible); // Ensure initial visibility matches state
-    
+
     elements.status.textContent =
       styleBundle.statusMessage ?? 'Twin Earth is ready.';
-    
+
     // Hide initial loader if it exists
     const loader = document.querySelector('#initial-loader');
     if (loader) loader.classList.add('is-hidden');
@@ -92,7 +93,6 @@ export async function boot() {
       elements.status.classList.add('is-hidden');
     }, 1800);
 
-    FEATURED_LOCATIONS.forEach((location) => addLocationMarker(ctx, location));
     updateHud(ctx);
     updateTerrainForZoom(ctx);
     scheduleSpin(ctx);

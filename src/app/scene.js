@@ -2,6 +2,7 @@ import { SKY } from './constants.js';
 import { VIEW } from '../services/styleBundle.js';
 import { setCloudsEnabled, startCloudsAnimation, updateCloudsForZoom } from '../services/clouds.js';
 import { applyLighting } from '../services/night.js';
+import { setLocationMarkersVisibility } from './locations.js';
 
 export function applyCommonScene(ctx) {
   const { map, state } = ctx;
@@ -51,6 +52,8 @@ export function setOverlayVisibility(ctx, visible) {
       map.setLayoutProperty(layerId, 'visibility', enabled ? 'visible' : 'none');
     }
   });
+
+  setLocationMarkersVisibility(ctx, enabled);
 }
 
 export function syncToggleState(ctx) {
