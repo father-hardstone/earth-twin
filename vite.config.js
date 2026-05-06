@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 
 export default defineConfig({
+  assetsInclude: ['**/*.webp', '**/*.png'],
   build: {
     chunkSizeWarningLimit: 1300,
     rollupOptions: {

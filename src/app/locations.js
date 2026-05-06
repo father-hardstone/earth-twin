@@ -33,12 +33,18 @@ export function addLocationMarker(ctx, location) {
   markerElement.innerHTML = '<span></span>';
   markerElement.addEventListener('click', () => flyToLocation(ctx, location));
 
-  new maplibregl.Marker({
+  const marker = new maplibregl.Marker({
     element: markerElement,
     anchor: 'center'
   })
     .setLngLat(location.center)
     .addTo(map);
+
+  if (Array.isArray(ctx.locationMarkers)) {
+    ctx.locationMarkers.push(marker);
+  }
+
+  return marker;
 }
 
 export function flyToLocation(ctx, location) {

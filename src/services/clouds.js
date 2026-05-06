@@ -12,10 +12,19 @@ const BLANK_TILE_CUTOFF = 0.03;
 let protocolRegistered = false;
 
 function buildRealUrl(z, y, x) {
-  const n = 2 ** z;
-  const col = ((x % n) + n) % n;
+  // GIBS GoogleMapsCompatible_Level9 only supports z<=9.
+  // When MapLibre requests overscaled tiles, map them to a supported parent.
+  const maxZ = 9;
+  const zClamped = Math.max(0, Math.min(maxZ, z));
+  const dz = z - zClamped;
+  const scale = dz > 0 ? 2 ** dz : 1;
+  const xScaled = Math.floor(x / scale);
+  const yScaled = Math.floor(y / scale);
+
+  const n = 2 ** zClamped;
+  const col = ((xScaled % n) + n) % n;
   // IMPORTANT: only X wraps. Y must be clamped in WebMercator.
-  const row = Math.max(0, Math.min(n - 1, y));
+  const row = Math.max(0, Math.min(n - 1, yScaled));
   const d = new Date();
   d.setUTCDate(d.getUTCDate() - 1);
   const time = d.toISOString().slice(0, 10);
@@ -24,7 +33,7 @@ function buildRealUrl(z, y, x) {
     'SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0' +
     '&LAYER=MODIS_Terra_CorrectedReflectance_TrueColor' +
     '&STYLE=default&TILEMATRIXSET=GoogleMapsCompatible_Level9' +
-    `&TILEMATRIX=${z}&TILEROW=${row}&TILECOL=${col}` +
+    `&TILEMATRIX=${zClamped}&TILEROW=${row}&TILECOL=${col}` +
     '&FORMAT=image/jpeg' +
     `&TIME=${time}`
   );

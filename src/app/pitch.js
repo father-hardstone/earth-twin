@@ -7,7 +7,11 @@ export function schedulePitchUpdate(ctx, pitch) {
   state.pendingPitchUpdateRaf = window.requestAnimationFrame(() => {
     state.pendingPitchUpdateRaf = null;
     try {
-      map.jumpTo({ pitch });
+      if (ctx.cameraController?.setPitch) {
+        ctx.cameraController.setPitch(pitch);
+      } else {
+        map.jumpTo({ pitch });
+      }
     } catch (error) {
       console.warn('Pitch update failed:', error);
     }
