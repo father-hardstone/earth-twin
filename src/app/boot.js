@@ -16,6 +16,72 @@ import { registerTileMgrProtocol } from '../tiles/maplibreProtocol';
 import { computePrefetchKeysForView } from '../tiles/prefetch';
 import { applyInteractionWeight } from './interactionWeight.js';
 
+const DEFAULT_LANDING_VIEW = {
+  zoom: 15.8,
+  lat: 48.8584,
+  lng: 2.2945,
+  bearing: -20,
+  pitch: 68
+};
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function ensureValidMapHash() {
+  const raw = window.location.hash || '';
+  const hash = raw.startsWith('#') ? raw.slice(1) : raw;
+
+  const applyDefault = () => {
+    const d = DEFAULT_LANDING_VIEW;
+    const safeHash = `#${d.zoom}/${d.lat}/${d.lng}/${d.bearing}/${d.pitch}`;
+    window.history.replaceState({}, '', `${window.location.pathname}${window.location.search}${safeHash}`);
+  };
+
+  if (!hash) {
+    applyDefault();
+    return;
+  }
+
+  const parts = hash.split('/').filter(Boolean);
+  if (parts.length < 3) {
+    applyDefault();
+    return;
+  }
+
+  const zoom = Number(parts[0]);
+  const lat = Number(parts[1]);
+  const lng = Number(parts[2]);
+  const bearing = parts.length >= 4 ? Number(parts[3]) : DEFAULT_LANDING_VIEW.bearing;
+  const pitch = parts.length >= 5 ? Number(parts[4]) : DEFAULT_LANDING_VIEW.pitch;
+
+  const valid =
+    Number.isFinite(zoom) &&
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    Number.isFinite(bearing) &&
+    Number.isFinite(pitch) &&
+    lat >= -90 &&
+    lat <= 90 &&
+    lng >= -180 &&
+    lng <= 180;
+
+  if (!valid) {
+    applyDefault();
+    return;
+  }
+
+  const safeHash = `#${clamp(zoom, 0.8, 18.8)}/${clamp(lat, -90, 90)}/${clamp(lng, -180, 180)}/${clamp(
+    bearing,
+    -180,
+    180
+  )}/${clamp(pitch, 0, 85)}`;
+
+  if (safeHash !== raw) {
+    window.history.replaceState({}, '', `${window.location.pathname}${window.location.search}${safeHash}`);
+  }
+}
+
 export async function boot() {
   const ctx = createAppContext();
   const { state, elements } = ctx;
@@ -36,6 +102,10 @@ export async function boot() {
   // Bind navigation/UI immediately so landing buttons work while MapLibre loads.
   const router = initRouter(ctx);
   bindUi(ctx, router);
+
+  // MapLibre's built-in hash parser throws if it encounters invalid values.
+  // Normalize the hash (or inject a default landing view) before map init.
+  ensureValidMapHash();
 
   const maplibreModule = await import('maplibre-gl');
   ctx.maplibregl = maplibreModule.default;
@@ -99,8 +169,8 @@ export async function boot() {
     container: 'map',
     style: styleBundle.style,
     projection: { type: state.projection === 'flat' ? 'mercator' : 'globe' },
-    center: [12, 20],
-    zoom: 1.58,
+    center: [DEFAULT_LANDING_VIEW.lng, DEFAULT_LANDING_VIEW.lat],
+    zoom: DEFAULT_LANDING_VIEW.zoom,
     pitch: Number.isFinite(initialPitch) ? initialPitch : 0,
     bearing: 0,
     minZoom: 0.8,

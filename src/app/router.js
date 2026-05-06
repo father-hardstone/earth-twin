@@ -11,12 +11,12 @@ export function initRouter(ctx) {
   };
 
   const handleRoute = () => {
-    const path = window.location.pathname;
+    const path = (window.location.pathname || '/').replace(/\/+$/, '') || '/';
     if (routes[path]) {
       routes[path]();
     } else {
       // Default to landing if path not recognized or "/"
-      window.history.replaceState({}, '', '/landing');
+      window.history.replaceState({}, '', `/landing${window.location.search}${window.location.hash}`);
       routes['/landing']();
     }
   };
