@@ -29,6 +29,14 @@ export async function createStyleBundle(view, initialVisibility = true) {
   return buildSatelliteHybridBundle(initialVisibility);
 }
 
+export function createFallbackStyleBundle() {
+  return {
+    ...buildFallbackStyle(),
+    statusMessage:
+      'Map load is taking longer than expected, so this view is starting in satellite + terrain mode.'
+  };
+}
+
 async function buildSatelliteHybridBundle(initialVisibility) {
   try {
     const referenceStyle = await fetchJson(OPEN_FREEMAP_STYLE_URL);
@@ -120,6 +128,7 @@ function buildHybridStyle(referenceStyle, baseUrl, initialVisibility) {
           type: 'raster',
           source: SATELLITE_SOURCE_ID,
           paint: {
+            'raster-fade-duration': 250,
             'raster-saturation': 0.08,
             'raster-contrast': 0.06
           }
@@ -151,7 +160,10 @@ function buildFallbackStyle() {
         {
           id: SATELLITE_SOURCE_ID,
           type: 'raster',
-          source: SATELLITE_SOURCE_ID
+          source: SATELLITE_SOURCE_ID,
+          paint: {
+            'raster-fade-duration': 250
+          }
         }
       ]
     },

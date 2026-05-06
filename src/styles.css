@@ -46,6 +46,53 @@ input {
   z-index: 1;
 }
 
+/* Atmosphere toggle: apply a globe-only fog/tint (not a full-screen overlay). */
+#map.atmosphere-on canvas {
+  /* Slightly more subtle color preservation */
+  filter:
+    saturate(var(--atmos-sat, 1.04))
+    contrast(var(--atmos-contrast, 1.02))
+    brightness(var(--atmos-brightness, 1.01))
+    hue-rotate(var(--atmos-hue, 4deg));
+}
+
+#map.atmosphere-on::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  /* A softer bluish fog concentrated toward the center of the globe. */
+  background:
+    radial-gradient(
+      circle at 50% calc(50% + var(--atmos-y-shift, 0px)),
+      rgba(150, 210, 255, var(--atmos-core, 0.18)) 0%,
+      rgba(80, 160, 255, var(--atmos-mid, 0.08)) calc(var(--atmos-radius-px, 260px) * 0.8),
+      transparent calc(var(--atmos-radius-px, 260px) * 1.1)
+    ),
+    radial-gradient(
+      circle at 50% calc(40% + var(--atmos-y-shift, 0px)),
+      rgba(180, 230, 255, var(--atmos-cap, 0.1)) 0%,
+      transparent calc(var(--atmos-radius-px, 260px) * 0.9)
+    );
+  mix-blend-mode: screen;
+  opacity: var(--atmos-opacity, 1);
+  transform: scale(var(--atmos-scale, 1));
+  transform-origin: 50% calc(50% + var(--atmos-y-shift, 0px));
+  /* Mask to the globe silhouette so UI chrome/background aren't tinted. */
+  -webkit-mask-image: radial-gradient(
+    circle at 50% calc(50% + var(--atmos-y-shift, 0px)),
+    #000 0 var(--atmos-radius-px, 260px),
+    transparent calc(var(--atmos-radius-px, 260px) + 22px)
+  );
+  mask-image: radial-gradient(
+    circle at 50% calc(50% + var(--atmos-y-shift, 0px)),
+    #000 0 var(--atmos-radius-px, 260px),
+    transparent calc(var(--atmos-radius-px, 260px) + 22px)
+  );
+}
+
+
 .city-marker {
   width: 18px;
   height: 18px;
@@ -54,9 +101,7 @@ input {
   border: 0;
   background: transparent;
   cursor: pointer;
-  z-index: 9999 !important; /* Always on top */
-  display: block !important;
-  visibility: visible !important;
+  z-index: 9999; /* Always on top */
 }
 
 .glass {
@@ -705,6 +750,10 @@ input {
 }
 
 /* Map landing markers (circular highlight). */
+.labels-hidden .city-marker {
+  display: none;
+}
+
 .city-marker {
   width: 18px;
   height: 18px;
@@ -762,6 +811,12 @@ input {
 
 .controls-fab sl-icon {
   font-size: 1.5rem;
+}
+
+.controls-fab svg {
+  width: 1.5rem;
+  height: 1.5rem;
+  display: block;
 }
 
 /* Toggles Grid */

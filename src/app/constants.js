@@ -67,25 +67,24 @@ export const FEATURED_LOCATIONS = [
 
 /** MapLibre sky / atmosphere styling applied after each style load. */
 export const SKY = {
-  'sky-color': '#081426',
-  'sky-horizon-blend': 0.55,
-  'horizon-color': '#bfd4ff',
-  'horizon-fog-blend': 0.7,
-  'fog-color': '#d8e6ff',
-  'fog-ground-blend': 0.14,
+  // More realistic "deep space" dark blue sky.
+  'sky-color': '#040b15',
+  'sky-horizon-blend': 0.5,
+  'horizon-color': '#96d2ff',
+  'horizon-fog-blend': 0.8,
+  'fog-color': '#bfe1ff',
+  'fog-ground-blend': 0.15,
   'atmosphere-blend': [
     'interpolate',
     ['linear'],
     ['zoom'],
     0,
     1,
-    3,
-    0.92,
-    7,
-    0.72,
     10,
-    0.22,
+    1,
     12,
+    0.6,
+    14,
     0
   ]
 };

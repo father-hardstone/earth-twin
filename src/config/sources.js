@@ -6,7 +6,7 @@ export const TERRAIN_SOURCE_ID = 'terrain-dem';
 export function createSatelliteSource() {
   return {
     type: 'raster',
-    tiles: ESRI_WORLD_IMAGERY_TILES,
+    tiles: ['tilemgr://sat/{z}/{x}/{y}'],
     tileSize: 256,
     maxzoom: 19,
     attribution:
