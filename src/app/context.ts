@@ -8,6 +8,7 @@ export type AppContext = {
   maplibregl: any;
   map: any;
   locationMarkers: Marker[];
+  atmosphereOverlayUnsub?: (() => void) | null;
 };
 
 /**
@@ -20,7 +21,7 @@ export function createAppContext(): AppContext {
     elements: getDomRefs(),
     maplibregl: null,
     map: null,
-    locationMarkers: []
+    locationMarkers: [],
+    atmosphereOverlayUnsub: null
   };
 }
-

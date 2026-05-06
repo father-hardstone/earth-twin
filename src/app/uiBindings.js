@@ -8,6 +8,18 @@ import { switchView } from './viewSwitch.js';
 import { setCloudsEnabled } from '../services/clouds.js';
 import { applyLighting } from '../services/night.js';
 
+function resetPitchToZero(ctx) {
+  const { map, elements } = ctx;
+  try {
+    if (elements.pitchRange) elements.pitchRange.value = 0;
+    if (elements.pitchValue) elements.pitchValue.textContent = '0 deg';
+  } catch (e) {}
+  try {
+    // Use the same path as the range slider to avoid "no-op" jumpTo states.
+    schedulePitchUpdate(ctx, 0);
+  } catch (e) {}
+}
+
 export function bindUi(ctx, router) {
   const { elements, state } = ctx;
 
@@ -98,6 +110,22 @@ export function bindUi(ctx, router) {
   elements.projToggle.addEventListener('sl-change', (event) => {
     if (!ctx.map) return;
     state.projection = event.target.checked ? 'globe' : 'flat';
+    resetPitchToZero(ctx);
+
+    // Flat projection: force-disable atmosphere (and lock the toggle).
+    if (state.projection === 'flat') {
+      state.atmosphereEnabled = false;
+      if (elements.atmosToggle) {
+        elements.atmosToggle.checked = false;
+        elements.atmosToggle.disabled = true;
+      }
+    } else {
+      // Re-enable atmosphere toggle when returning to globe unless Dark view locks it.
+      if (elements.atmosToggle && state.currentView !== VIEW.DARK) {
+        elements.atmosToggle.disabled = false;
+      }
+    }
+
     applyCommonScene(ctx);
     syncProjectionState(ctx);
   });
@@ -124,6 +152,7 @@ export function bindUi(ctx, router) {
   elements.spinToggle.addEventListener('sl-change', (event) => {
     if (!ctx.map) return;
     state.autoSpin = event.target.checked;
+    resetPitchToZero(ctx);
     if (state.autoSpin) {
       scheduleSpin(ctx);
     } else if (state.spinTimeout) {
@@ -194,4 +223,3 @@ export function bindUi(ctx, router) {
   }
   setPanelOpen(false);
 }
-

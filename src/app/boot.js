@@ -163,7 +163,12 @@ export async function boot() {
     }
   } catch (e) {}
 
-  const initialPitch = Number(elements.pitchRange?.value ?? 0);
+  // Hard rule: camera pitch always starts at 0deg on load.
+  const initialPitch = 0;
+  try {
+    if (elements.pitchRange) elements.pitchRange.value = 0;
+    if (elements.pitchValue) elements.pitchValue.textContent = '0 deg';
+  } catch (e) {}
 
   ctx.map = new ctx.maplibregl.Map({
     container: 'map',
@@ -171,7 +176,7 @@ export async function boot() {
     projection: { type: state.projection === 'flat' ? 'mercator' : 'globe' },
     center: [DEFAULT_LANDING_VIEW.lng, DEFAULT_LANDING_VIEW.lat],
     zoom: DEFAULT_LANDING_VIEW.zoom,
-    pitch: Number.isFinite(initialPitch) ? initialPitch : 0,
+    pitch: 0,
     bearing: 0,
     minZoom: 0.8,
     maxZoom: 18.8,
