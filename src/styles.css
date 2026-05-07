@@ -8,9 +8,7 @@
     BlinkMacSystemFont,
     'Segoe UI',
     sans-serif;
-  background:
-    radial-gradient(circle at top, rgba(85, 138, 255, 0.18), transparent 42%),
-    linear-gradient(180deg, #050913 0%, #02050b 100%);
+  background: #02050b;
   color: #eef4ff;
 }
 
@@ -42,7 +40,22 @@ input {
 
 #map {
   position: relative;
+  background: transparent;
+  z-index: 1;
+}
+
+/* Starfield behind the globe/canvas (requires style background-opacity 0). */
+#map::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
   background: #000;
+}
+
+#map canvas {
+  position: relative;
   z-index: 1;
 }
 
@@ -62,19 +75,21 @@ input {
   inset: 0;
   pointer-events: none;
   z-index: 2;
-  /* A softer bluish fog concentrated toward the center of the globe. */
+  /* 
   background:
     radial-gradient(
-      circle at 50% calc(50% + var(--atmos-y-shift, 0px)),
-      rgba(150, 210, 255, var(--atmos-core, 0.18)) 0%,
-      rgba(80, 160, 255, var(--atmos-mid, 0.08)) calc(var(--atmos-radius-px, 260px) * 0.8),
-      transparent calc(var(--atmos-radius-px, 260px) * 1.1)
+      circle at calc(50% + var(--atmos-glow-x, 0px)) calc(50% + var(--atmos-glow-y, 0px)),
+      rgba(150, 210, 255, var(--atmos-core, 0.05)) 0%,
+      rgba(100, 180, 255, var(--atmos-mid, 0.15)) 75%,
+      rgba(180, 230, 255, var(--atmos-edge, 0.35)) 98%,
+      transparent 105%
     ),
     radial-gradient(
-      circle at 50% calc(40% + var(--atmos-y-shift, 0px)),
-      rgba(180, 230, 255, var(--atmos-cap, 0.1)) 0%,
-      transparent calc(var(--atmos-radius-px, 260px) * 0.9)
+      circle at calc(50% + var(--atmos-glow-x, 0px)) calc(40% + var(--atmos-glow-y, 0px)),
+      rgba(200, 240, 255, var(--atmos-cap, 0.15)) 0%,
+      transparent 90%
     );
+  */
   mix-blend-mode: screen;
   opacity: var(--atmos-opacity, 1);
   transform: scale(var(--atmos-scale, 1));
@@ -180,7 +195,7 @@ input {
   z-index: 1000;
   background-color: #03070f;
   background-image: 
-    linear-gradient(rgba(3, 7, 15, 0.2), rgba(3, 7, 15, 0.2)),
+    linear-gradient(rgba(3, 7, 15, 0.6), rgba(3, 7, 15, 0.6)),
     url('./assets/images/twin-earth-background.webp');
   background-size: cover;
   background-position: center;
@@ -784,6 +799,52 @@ input {
 }
 
 /* Controls FAB */
+.top-right-tools {
+  position: absolute;
+  top: 1.5rem;
+  right: 5rem; /* Offset from the standard nav controls */
+  display: flex;
+  gap: 0.75rem;
+  z-index: 100;
+}
+
+.tool-btn {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  border: 1px solid rgba(173, 197, 255, 0.2);
+  background: rgba(7, 14, 24, 0.6);
+  backdrop-filter: blur(12px);
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  font-size: 1.25rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.tool-btn sl-icon {
+  font-size: 1.35rem;
+  display: block;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.tool-btn:hover {
+  background: rgba(30, 45, 75, 0.8);
+  border-color: rgba(173, 197, 255, 0.4);
+  color: #fff;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(116, 177, 255, 0.25);
+}
+
+.tool-btn.is-active {
+  background: rgba(116, 177, 255, 0.3);
+  border-color: rgba(116, 177, 255, 0.6);
+  color: #74b1ff;
+}
+
 .controls-fab {
   position: absolute;
   top: 1.25rem;

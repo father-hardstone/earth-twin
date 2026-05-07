@@ -157,7 +157,8 @@ function registerProtocols(ctx) {
       'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_CityLights_2012/default//GoogleMapsCompatible_Level8/' +
       `${z}/${y}/${x}.jpg`;
 
-    const response = await fetch(realUrl, { signal: abortController.signal });
+    const signal = abortController?.signal ?? new AbortController().signal;
+    const response = await fetch(realUrl, { signal });
     if (!response.ok) {
       throw new Error(`GIBS lights tile error: ${response.status}`);
     }
@@ -282,7 +283,7 @@ function rad2deg(r) {
   return (r * 180) / Math.PI;
 }
 
-function getSubsolarPoint(date) {
+export function getSubsolarPoint(date) {
   // Approximate solar position (good enough for a visually accurate terminator).
   const jd = toJulianDay(date);
   const T = (jd - 2451545.0) / 36525.0;

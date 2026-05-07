@@ -187,7 +187,8 @@ function registerProtocol(maplibregl) {
     const x = Number(parts[2]);
     const realUrl = buildRealUrl(z, y, x);
 
-    const response = await fetch(realUrl, { signal: abortController.signal });
+    const signal = abortController?.signal ?? new AbortController().signal;
+    const response = await fetch(realUrl, { signal });
     if (!response.ok) {
       throw new Error(`GIBS tile error: ${response.status}`);
     }

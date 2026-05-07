@@ -55,7 +55,7 @@ export function applyInteractionWeight(ctx) {
 
     pitchVel *= Math.pow(PITCH_FRICTION, k);
     pitchPos += pitchVel * k;
-    pitchPos = clamp(pitchPos, 0, 85);
+    pitchPos = clamp(pitchPos, 0, 89.99);
 
     map.jumpTo({ pitch: pitchPos });
 
@@ -78,7 +78,7 @@ export function applyInteractionWeight(ctx) {
         try { map.jumpTo({ pitch: 0, bearing: 0 }); } catch (e) {}
         return;
       }
-      pitchPos = clamp(Number(pitch), 0, 85);
+      pitchPos = clamp(Number(pitch), 0, 89.99);
       pitchVel = 0;
       try { map.jumpTo({ pitch: pitchPos }); } catch (e) {}
     }

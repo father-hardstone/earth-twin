@@ -7,7 +7,8 @@ import { setBasePath } from '@shoelace-style/shoelace/dist/utilities/base-path.j
 import { registerIconLibrary } from '@shoelace-style/shoelace/dist/utilities/icon-library.js';
 
 import { renderAppShell } from './app/shell';
-import { boot } from './app';
+// @ts-ignore
+import { boot } from './app/boot.js';
 
 // Use the CDN for Shoelace's lazy-loaded component bundles.
 // This avoids 404s unless you also copy Shoelace assets into /public.
@@ -24,5 +25,15 @@ registerIconLibrary('default', {
 });
 
 renderAppShell();
-boot();
-
+void boot().catch((e) => {
+  try {
+    // Surface fatal init errors on-screen so a blank page isn't silent.
+    const d = document.createElement('div');
+    d.style.cssText =
+      'position:fixed;top:12px;left:12px;right:12px;z-index:99999;background:#b00020;color:#fff;padding:12px 14px;border-radius:10px;font:12px/1.35 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;box-shadow:0 12px 30px rgba(0,0,0,.35)';
+    const msg = (e && (e.stack || e.message)) ? String(e.stack || e.message) : String(e);
+    d.textContent = `Boot failed: ${msg}`;
+    document.body.appendChild(d);
+  } catch {}
+  console.error('Boot failed:', e);
+});
