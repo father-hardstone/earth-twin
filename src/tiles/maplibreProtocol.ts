@@ -18,7 +18,7 @@ export function registerTileMgrProtocol(maplibregl: any, tileManager: TileManage
   if (!maplibregl || registered) return;
   registered = true;
 
-  maplibregl.addProtocol(PROTOCOL, async (params: any, abortController: AbortController) => {
+  maplibregl.addProtocol(PROTOCOL, async (params: any, abortController?: AbortController) => {
     const { z, x, y } = parseUrl(params.url);
 
     // Fast path: return the EXACT cached tile only (never a parent).
@@ -30,7 +30,8 @@ export function registerTileMgrProtocol(maplibregl: any, tileManager: TileManage
     }
 
     // Slow path: fetch the exact tile over the network.
-    const fetched = await tileManager.fetchTile(z, x, y, abortController.signal);
+    const signal = abortController?.signal ?? new AbortController().signal;
+    const fetched = await tileManager.fetchTile(z, x, y, signal);
     return { data: fetched.data.slice(0) };
   });
 }

@@ -36,6 +36,8 @@ export type DomRefs = {
   goToMapNavBtn: HTMLButtonElement;
   backToLandingBtn: HTMLElement;
   btnGeolocation: SlButton;
+  btnCapture: HTMLButtonElement;
+  btnLockAxis: HTMLButtonElement;
   dayNightContainer: HTMLElement;
 
   locations: HTMLElement;
@@ -70,6 +72,8 @@ export function getDomRefs(): DomRefs {
     goToMapNavBtn: req('#go-to-map-nav'),
     backToLandingBtn: req('#back-to-landing'),
     btnGeolocation: req('#btn-geolocation'),
+    btnCapture: req('#btn-capture'),
+    btnLockAxis: req('#btn-lock-axis'),
     dayNightContainer: req('#day-night-container'),
 
     locations: req('#locations')

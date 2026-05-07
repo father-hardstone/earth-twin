@@ -17,7 +17,7 @@ import { computePrefetchKeysForView } from '../tiles/prefetch';
 import { applyInteractionWeight } from './interactionWeight.js';
 
 const DEFAULT_LANDING_VIEW = {
-  zoom: 15.8,
+  zoom: 2.0,
   lat: 48.8584,
   lng: 2.2945,
   bearing: -20,
@@ -75,7 +75,7 @@ function ensureValidMapHash() {
     bearing,
     -180,
     180
-  )}/${clamp(pitch, 0, 85)}`;
+  )}/${clamp(pitch, 0, 89.99)}`;
 
   if (safeHash !== raw) {
     window.history.replaceState({}, '', `${window.location.pathname}${window.location.search}${safeHash}`);
@@ -99,23 +99,17 @@ export async function boot() {
     }
   };
 
-  // Bind navigation/UI immediately so landing buttons work while MapLibre loads.
   const router = initRouter(ctx);
   bindUi(ctx, router);
 
-  // MapLibre's built-in hash parser throws if it encounters invalid values.
-  // Normalize the hash (or inject a default landing view) before map init.
   ensureValidMapHash();
 
   const maplibreModule = await import('maplibre-gl');
   ctx.maplibregl = maplibreModule.default;
   enableRtlText(ctx.maplibregl);
 
-  // Tile manager: non-blocking protocol + caches + prefetch.
   const tileManager = new TileManager({ memoryMaxBytes: 128 * 1024 * 1024, maxFetchConcurrency: 12 });
   registerTileMgrProtocol(ctx.maplibregl, tileManager);
-
-  // Pre-seed z0–z3 (85 tiles) so the globe always has base imagery.
   tileManager.preseedBaseZooms(3);
 
   elements.status.textContent = 'Loading Twin Earth...';
@@ -139,32 +133,23 @@ export async function boot() {
     elements.status.textContent = styleBundle.statusMessage;
   }
 
-  // Ensure the map container has a measurable size before initializing MapLibre.
-  // Some browsers/GPUs crash inside MapLibre when initialized at 0x0.
   await new Promise(requestAnimationFrame);
   const mapEl = document.getElementById('map');
-  if (!mapEl) {
-    throw new Error('Missing #map element');
-  }
+  if (!mapEl) throw new Error('Missing #map element');
+  
   if (mapEl.clientWidth === 0 || mapEl.clientHeight === 0) {
     mapEl.style.width = '100vw';
     mapEl.style.height = '100vh';
   }
 
-  // Sync initial scene state from UI defaults before creating the map.
-  // (Prevents mismatches like "toggle says globe" while map starts in mercator.)
-  // We check both .checked property and the 'checked' attribute for Web Components.
   try {
-    if (elements.projToggle) {
-      state.projection = (elements.projToggle.checked || elements.projToggle.hasAttribute('checked')) ? 'globe' : 'flat';
-    }
+    state.projection = 'globe';
+    if (elements.projToggle) elements.projToggle.checked = true;
     if (elements.atmosToggle) {
       state.atmosphereEnabled = (elements.atmosToggle.checked || elements.atmosToggle.hasAttribute('checked'));
     }
   } catch (e) {}
 
-  // Hard rule: camera pitch always starts at 0deg on load.
-  const initialPitch = 0;
   try {
     if (elements.pitchRange) elements.pitchRange.value = 0;
     if (elements.pitchValue) elements.pitchValue.textContent = '0 deg';
@@ -173,7 +158,9 @@ export async function boot() {
   ctx.map = new ctx.maplibregl.Map({
     container: 'map',
     style: styleBundle.style,
-    projection: { type: state.projection === 'flat' ? 'mercator' : 'globe' },
+    // Some MapLibre builds ignore the object form during init; the string form
+    // is accepted broadly and prevents "starts in mercator even when toggle is globe".
+    projection: state.projection === 'flat' ? 'mercator' : 'globe',
     center: [DEFAULT_LANDING_VIEW.lng, DEFAULT_LANDING_VIEW.lat],
     zoom: DEFAULT_LANDING_VIEW.zoom,
     pitch: 0,
@@ -182,78 +169,60 @@ export async function boot() {
     maxZoom: 18.8,
     hash: true,
     antialias: true,
-    // Higher pixel ratio makes the globe edge much smoother (less jagged),
-    // at the cost of more GPU work. We clamp to avoid blowing up low-end GPUs.
     pixelRatio: Math.min(2.5, Math.max(2, window.devicePixelRatio || 1)),
-    // Enables continuous left/right panning in flat (mercator) projection.
-    // Globe projection ignores this setting.
     renderWorldCopies: true,
-    maxPitch: 85,
+    maxPitch: 89.99,
+    alpha: true,
+    preserveDrawingBuffer: true,
     cancelPendingTileRequestsWhileZooming: true,
-    // Add alpha channel support if possible (though mostly handled by container)
-    transformRequest: (url) => ({ url })
+    refreshExpiredTiles: true,
+    bearingSnap: 0
   });
 
   const { map, maplibregl } = ctx;
 
-  // Sync state to UI now that map is created.
-  if (ctx.syncUiToState) {
-    ctx.syncUiToState();
-  }
+  // Ensure the style doesn't override projection back to mercator during initial load.
+  // (Some styles specify `projection`, and MapLibre applies it on style.load.)
+  map.once('style.load', () => {
+    try {
+      map.setProjection({ type: state.projection === 'flat' ? 'mercator' : 'globe' });
+    } catch (e) {
+      try {
+        map.setProjection(state.projection === 'flat' ? 'mercator' : 'globe');
+      } catch {}
+    }
 
+    // Apply scene-dependent effects (atmosphere, sky, overlay) as soon as the style is ready.
+    try { applyCommonScene(ctx); } catch (e) {}
+  });
+
+  if (ctx.syncUiToState) ctx.syncUiToState();
 
   applyInteractionWeight(ctx);
 
-  // Hide loader as soon as we render the first frame (best UX signal).
   map.once('render', () => hideLoader());
-  // Also hide on full load/idle.
   map.once('load', () => hideLoader());
   map.once('idle', () => hideLoader());
-
-  // Fail-safe: only hide after a long stall; no noisy warning.
   window.setTimeout(() => hideLoader('Twin Earth is ready.'), 30000);
 
   tileManager.setOnTileUpdated(() => {
-    // Ask MapLibre to repaint; combined with raster fade this blends updates.
-    try {
-      map.triggerRepaint();
-    } catch (e) {}
+    try { map.triggerRepaint(); } catch (e) {}
   });
 
   map.on('error', (event) => {
     try {
-      const details = {
-        sourceId: event?.sourceId,
-        tile: event?.tile,
-        err: event?.error ?? event
-      };
-      console.warn('MapLibre error:', details);
+      console.warn('MapLibre error:', { sourceId: event?.sourceId, tile: event?.tile, err: event?.error ?? event });
       elements.status.textContent = 'Map error: check network / style endpoints.';
-      const loader = document.querySelector('#initial-loader');
-      if (loader) loader.classList.add('is-hidden');
+      hideLoader();
     } catch (e) {}
   });
 
-  map.addControl(
-    new maplibregl.NavigationControl({
-      showCompass: true,
-      showZoom: true,
-      visualizePitch: true
-    }),
-    'top-right'
-  );
+  map.addControl(new maplibregl.NavigationControl({ showCompass: true, showZoom: true, visualizePitch: true }), 'top-right');
   map.addControl(new maplibregl.FullscreenControl(), 'top-right');
-  map.addControl(
-    new maplibregl.ScaleControl({
-      maxWidth: 120,
-      unit: 'metric'
-    }),
-    'bottom-right'
-  );
+  map.addControl(new maplibregl.ScaleControl({ maxWidth: 120, unit: 'metric' }), 'bottom-right');
 
   registerMapEvents(ctx);
 
-  // Prefetch on motion; does not block rendering.
   const schedulePrefetch = (() => {
     let t = 0;
     return () => {
@@ -270,27 +239,87 @@ export async function boot() {
   map.on('zoomend', schedulePrefetch);
 
   map.on('load', () => {
+    import('./skyTextureLayer.js').then(({ SkyTextureLayer }) => {
+      const layers = map.getStyle().layers;
+      const firstId = layers.length > 0 ? layers[0].id : undefined;
+      const url = import.meta.env.VITE_SKY_TEXTURE_URL || new URL('../assets/images/starmap_3.png', import.meta.url).href;
+      map.addLayer(new SkyTextureLayer({ url, opacity: 0.65, brightness: 0.22 }), firstId);
+    });
+
+    import('./sunLayer.js').then(({ SunLayer }) => {
+      const layers = map.getStyle().layers;
+      const firstId = layers.length > 0 ? layers[0].id : undefined;
+      map.addLayer(new SunLayer({ intensity: 1.2, size: 0.001 }), firstId);
+    });
+
+    // 3D polar cap mesh (world-space on the globe) that fades in near WebMercator clamp.
+    // Uses polar-stereographic textures so it rotates perfectly with the globe.
+    import('./polarCapMeshLayer.js').then(({ PolarCapMeshLayer }) => {
+      try {
+        const layers = map.getStyle().layers;
+        const firstId = layers.length > 0 ? layers[0].id : undefined;
+        map.addLayer(
+          new PolarCapMeshLayer({
+            startLat: 80,
+            endLat: 85.05112878,
+            latEdge: 85.05112878,
+            segments: 96,
+            northUrl: import.meta.env.VITE_POLAR_CAP_NORTH_URL || null,
+            southUrl: import.meta.env.VITE_POLAR_CAP_SOUTH_URL || null
+          }),
+          firstId
+        );
+      } catch (e) {
+        console.warn('Failed to add polar cap mesh:', e);
+      }
+    });
+
+    const addPolarCaps = () => {
+      try {
+        const poleSourceId = 'polar-caps';
+        if (map.getSource(poleSourceId)) return;
+        const createPolePolygon = (latCenter) => {
+          const coords = [];
+          const lat = latCenter > 0 ? 78 : -78;
+          for (let i = 0; i <= 360; i += 15) coords.push([i > 180 ? i - 360 : i, lat]);
+          return [coords];
+        };
+        map.addSource(poleSourceId, {
+          type: 'geojson',
+          data: {
+            type: 'FeatureCollection',
+            features: [
+              { type: 'Feature', properties: { id: 'north-pole' }, geometry: { type: 'Polygon', coordinates: createPolePolygon(90) } },
+              { type: 'Feature', properties: { id: 'south-pole' }, geometry: { type: 'Polygon', coordinates: createPolePolygon(-90) } }
+            ]
+          }
+        });
+
+        // Keep the legacy geojson cap layers present but fully transparent.
+        // The real pole-coverage is handled by the 3D PolarCapMeshLayer.
+        map.addLayer({ id: 'polar-cap-fill', type: 'fill', source: poleSourceId, paint: { 'fill-color': '#ffffff', 'fill-opacity': 0 } });
+        map.addLayer({ id: 'polar-cap-outline', type: 'line', source: poleSourceId, paint: { 'line-color': '#ffffff', 'line-width': 2, 'line-blur': 10, 'line-opacity': 0 } });
+      } catch (e) { console.warn('Failed to add polar caps:', e); }
+    };
+
+    addPolarCaps();
+    
     applyCommonScene(ctx);
     enforceOrientationConstraints(ctx);
 
+    // The native MapLibre atmosphere (setSky) silently fails when called during
+    // 'load' because the globe projection rendering pipeline hasn't fully settled.
+    // Re-apply once the map reaches 'idle' (all tiles rendered, globe ready).
+    map.once('idle', () => {
+      try { applyCommonScene(ctx); } catch (e) {}
+    });
+
     FEATURED_LOCATIONS.forEach((location) => addLocationMarker(ctx, location));
-    setOverlayVisibility(ctx, state.labelsVisible); // Ensure initial visibility matches state
-
-    elements.status.textContent =
-      styleBundle.statusMessage ?? 'Twin Earth is ready.';
-
-    // Hide initial loader if it exists
-    const loader = document.querySelector('#initial-loader');
-    if (loader) loader.classList.add('is-hidden');
-
-    window.setTimeout(() => {
-      elements.status.classList.add('is-hidden');
-    }, 1800);
+    setOverlayVisibility(ctx, state.labelsVisible);
 
     updateHud(ctx);
     updateTerrainForZoom(ctx);
     scheduleSpin(ctx);
-
     schedulePrefetch();
   });
 }

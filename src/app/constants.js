@@ -70,9 +70,9 @@ export const SKY = {
   // More realistic "deep space" dark blue sky.
   'sky-color': '#040b15',
   'sky-horizon-blend': 0.5,
-  'horizon-color': '#96d2ff',
-  'horizon-fog-blend': 0.8,
-  'fog-color': '#bfe1ff',
+  'horizon-color': '#4a7fb5',
+  'horizon-fog-blend': 0.6,
+  'fog-color': '#2a4d70',
   'fog-ground-blend': 0.15,
   'atmosphere-blend': [
     'interpolate',

@@ -22,7 +22,9 @@ export type AppState = {
   overlayLayerIds: string[];
   inspectableLayerIds: string[];
   supportsCartographyToggle: boolean;
+  isFlipping: boolean;
   popup: unknown;
+  fixedAxis: boolean;
 };
 
 export function createAppState(): AppState {
@@ -48,7 +50,9 @@ export function createAppState(): AppState {
     overlayLayerIds: [],
     inspectableLayerIds: [],
     supportsCartographyToggle: true,
-    popup: null
+    isFlipping: false,
+    popup: null,
+    fixedAxis: false
   };
 }
 

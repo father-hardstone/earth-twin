@@ -108,6 +108,15 @@ export function renderAppShell() {
 
     <div id="map" aria-label="Interactive 3D map of Earth"></div>
 
+    <div class="top-right-tools">
+      <button id="btn-capture" class="tool-btn" aria-label="Capture View">
+        <sl-icon name="camera"></sl-icon>
+      </button>
+      <button id="btn-lock-axis" class="tool-btn" aria-label="Toggle Fixed Axis">
+        <sl-icon name="compass"></sl-icon>
+      </button>
+    </div>
+
     <button id="toggle-controls" class="controls-fab" aria-label="Toggle Controls">
       <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
         <path fill-rule="evenodd" d="M10.5 1a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-1 0V4H1.5a.5.5 0 0 1 0-1H10V1.5a.5.5 0 0 1 .5-.5M12 3.5a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 0 1h-2a.5.5 0 0 1-.5-.5m-6.5 2A.5.5 0 0 1 6 6v1.5h8.5a.5.5 0 0 1 0 1H6V10a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5M1 8a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 0 1h-2A.5.5 0 0 1 1 8m9.5 2a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-1 0V13H1.5a.5.5 0 0 1 0-1H10v-1.5a.5.5 0 0 1 .5-.5m1.5 2.5a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 0 1h-2a.5.5 0 0 1-.5-.5"/>
@@ -157,7 +166,7 @@ export function renderAppShell() {
         <sl-range
           id="pitch-range"
           min="0"
-          max="80"
+          max="89"
           step="1"
           value="0"
         ></sl-range>

@@ -8,6 +8,24 @@ import { switchView } from './viewSwitch.js';
 import { setCloudsEnabled } from '../services/clouds.js';
 import { applyLighting } from '../services/night.js';
 
+function clampLatForGlobe(ctx) {
+  const { map, state } = ctx;
+  if (!map || state.projection !== 'globe') return;
+  try {
+    const c = map.getCenter();
+    if (!c) return;
+    // WebMercator cannot represent beyond ~±85.0511. Keep geolocation within
+    // that range so map math stays stable, while pole-rollover (mapEvents)
+    // handles seamless traversal near the poles.
+    const WEB_MERCATOR_MAX_LAT = 85.05112878;
+    const safe = WEB_MERCATOR_MAX_LAT - 0.001;
+    const clampedLat = Math.max(-safe, Math.min(safe, c.lat));
+    if (Math.abs(clampedLat - c.lat) > 0.0001) {
+      map.jumpTo({ center: [c.lng, clampedLat] });
+    }
+  } catch (e) {}
+}
+
 function resetPitchToZero(ctx) {
   const { map, elements } = ctx;
   try {
@@ -160,6 +178,130 @@ export function bindUi(ctx, router) {
     }
   });
 
+  // --- Tool Buttons (Top Right) ---
+  elements.btnCapture.addEventListener('click', () => {
+    if (!ctx.map) return;
+    try {
+      // Force a repaint to ensure the drawing buffer is populated
+      ctx.map.triggerRepaint();
+      
+      // Capture after the next render cycle to ensure we don't get a blank/cleared buffer
+      ctx.map.once('render', () => {
+        const canvas = ctx.map.getCanvas();
+
+        // Composite onto black so the translucent sky texture doesn't look see-through
+        // in the exported image (keep runtime translucency unchanged).
+        const out = document.createElement('canvas');
+        out.width = canvas.width;
+        out.height = canvas.height;
+        const g = out.getContext('2d', { alpha: false });
+        if (g) {
+          g.fillStyle = '#000';
+          g.fillRect(0, 0, out.width, out.height);
+          g.drawImage(canvas, 0, 0);
+        }
+        const dataUrl = (g ? out : canvas).toDataURL('image/png');
+
+        const link = document.createElement('a');
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+        link.download = `twin-earth-${timestamp}.png`;
+        link.href = dataUrl;
+        link.click();
+        
+        elements.status.textContent = 'Snapshot saved to downloads.';
+        elements.status.classList.remove('is-hidden');
+        window.setTimeout(() => elements.status.classList.add('is-hidden'), 2500);
+      });
+    } catch (e) {
+      console.error('Capture failed:', e);
+      alert('Failed to capture screen.');
+    }
+  });
+
+  elements.btnLockAxis.addEventListener('click', () => {
+    if (!ctx.map) return;
+    state.fixedAxis = !state.fixedAxis;
+    const isLocked = state.fixedAxis;
+    
+    elements.btnLockAxis.classList.toggle('is-active', isLocked);
+    
+    if (isLocked) {
+      // Lock tilt (pitch) only, but keep rotation (bearing) enabled.
+      try { ctx.map.jumpTo({ pitch: 0 }); } catch (e) {}
+
+      // Clamp pitch to 0 so *any* gesture can't change it while locked.
+      // Store previous bounds so we can restore on unlock.
+      if (!ctx._prevPitchBounds) {
+        try {
+          ctx._prevPitchBounds = {
+            min: typeof ctx.map.getMinPitch === 'function' ? ctx.map.getMinPitch() : 0,
+            max: typeof ctx.map.getMaxPitch === 'function' ? ctx.map.getMaxPitch() : 89.99
+          };
+        } catch (e) {
+          ctx._prevPitchBounds = { min: 0, max: 89.99 };
+        }
+      }
+      try { ctx.map.setMinPitch?.(0); } catch (e) {}
+      try { ctx.map.setMaxPitch?.(0); } catch (e) {}
+
+      try {
+        ctx.map.dragRotate?.enable?.();
+        ctx.map.touchZoomRotate?.enableRotation?.();
+        ctx.map.keyboard?.enableRotation?.();
+        ctx.map.touchPitch?.disable?.();
+      } catch (e) {}
+
+      // Keep a stable handler reference so we can remove it on unlock.
+      if (ctx._fixedAxisEnforcer) {
+        try { ctx.map.off('move', ctx._fixedAxisEnforcer); } catch (e) {}
+        try { ctx.map.off('rotate', ctx._fixedAxisEnforcer); } catch (e) {}
+        try { ctx.map.off('pitch', ctx._fixedAxisEnforcer); } catch (e) {}
+      }
+      ctx._fixedAxisEnforcer = () => {
+        if (!state.fixedAxis) return;
+        try {
+          const p = ctx.map.getPitch?.() ?? 0;
+          if (Math.abs(p) > 0.0001) {
+            ctx.map.jumpTo({ pitch: 0 });
+          }
+        } catch (e) {}
+      };
+
+      try { ctx.map.on('move', ctx._fixedAxisEnforcer); } catch (e) {}
+      try { ctx.map.on('rotate', ctx._fixedAxisEnforcer); } catch (e) {}
+      try { ctx.map.on('pitch', ctx._fixedAxisEnforcer); } catch (e) {}
+
+      elements.status.textContent = 'Tilt Locked';
+    } else {
+      // Remove the force handler and re-enable rotation/pitch.
+      if (ctx._fixedAxisEnforcer) {
+        try { ctx.map.off('move', ctx._fixedAxisEnforcer); } catch (e) {}
+        try { ctx.map.off('rotate', ctx._fixedAxisEnforcer); } catch (e) {}
+        try { ctx.map.off('pitch', ctx._fixedAxisEnforcer); } catch (e) {}
+        ctx._fixedAxisEnforcer = null;
+      }
+
+      // Restore pitch bounds and interactions.
+      if (ctx._prevPitchBounds) {
+        try { ctx.map.setMinPitch?.(ctx._prevPitchBounds.min); } catch (e) {}
+        try { ctx.map.setMaxPitch?.(ctx._prevPitchBounds.max); } catch (e) {}
+        ctx._prevPitchBounds = null;
+      }
+
+      try {
+        ctx.map.dragRotate?.enable?.();
+        ctx.map.touchZoomRotate?.enableRotation?.();
+        ctx.map.touchPitch?.enable?.();
+        ctx.map.keyboard?.enableRotation?.();
+      } catch (e) {}
+
+      elements.status.textContent = 'Tilt Unlocked';
+    }
+    
+    elements.status.classList.remove('is-hidden');
+    window.setTimeout(() => elements.status.classList.add('is-hidden'), 1500);
+  });
+
   // --- Geolocation ---
   elements.btnGeolocation.addEventListener('click', () => {
     if (!ctx.map) return;
@@ -179,6 +321,7 @@ export function bindUi(ctx, router) {
           speed: 0.8,
           essential: true
         });
+        clampLatForGlobe(ctx);
         elements.btnGeolocation.loading = false;
         elements.status.textContent = 'Landed at your location.';
         window.setTimeout(() => elements.status.classList.add('is-hidden'), 2000);
