@@ -16,7 +16,8 @@ export function registerMapEvents(ctx) {
   let poleClampGuard = false;
   const clampAtPoles = () => {
     if (poleClampGuard) return;
-    if (state.projection === 'flat') return;
+    // Only needed for MapLibre's globe projection (WebMercator math limits).
+    if (state.projection === 'flat' || ctx.renderer !== 'maplibre') return;
 
     const center = map.getCenter?.();
     if (!center) return;
@@ -68,7 +69,10 @@ export function registerMapEvents(ctx) {
   });
 
   map.on('click', (event) => {
-    const layers = state.inspectableLayerIds.filter((layerId) => map.getLayer(layerId));
+    if (typeof map?.queryRenderedFeatures !== 'function' || typeof map?.getLayer !== 'function') {
+      return;
+    }
+    const layers = state.inspectableLayerIds.filter((layerId) => map.getLayer?.(layerId));
     if (!layers.length) {
       return;
     }
@@ -84,4 +88,3 @@ export function registerMapEvents(ctx) {
     showPopup(ctx, event.lngLat, priorityFeature);
   });
 }
-

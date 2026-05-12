@@ -2,6 +2,9 @@ import { TERRAIN_SOURCE_ID } from '../config/sources.js';
 
 export function updateTerrainForZoom(ctx) {
   const { map, state } = ctx;
+  if (!map || typeof map.getSource !== 'function' || typeof map.setTerrain !== 'function' || typeof map.getZoom !== 'function') {
+    return;
+  }
   if (!map.getSource(TERRAIN_SOURCE_ID)) {
     return;
   }
@@ -30,6 +33,7 @@ export function updateTerrainForZoom(ctx) {
 
 export function scheduleTerrainUpdate(ctx) {
   const { map, state } = ctx;
+  if (!map || typeof map.setTerrain !== 'function') return;
   if (!state.terrainEnabled) {
     return;
   }

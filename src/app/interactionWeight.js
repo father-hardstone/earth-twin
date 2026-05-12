@@ -21,6 +21,31 @@ export function applyInteractionWeight(ctx) {
   const isOrientationLocked = () =>
     ctx.state?.projection === 'flat' || ctx.state?.currentView === 'dark';
 
+  // --- Cesium: let the native controller handle LMB globe spinning ---
+  // Cesium's built-in rotate handler properly orbits the camera in 3D without
+  // clipping at the poles, so we enable it and only disable look/tilt/translate.
+  if (ctx.renderer === 'cesium' && ctx.viewer?.scene?.camera) {
+    try {
+      const ssc = ctx.viewer.scene.screenSpaceCameraController;
+      // Let Cesium handle left-drag globe rotation natively — it orbits the
+      // camera properly in 3D without the pole-clipping our old jumpTo handler had.
+      ssc.enableRotate = true;
+      ssc.enableLook = false;
+      // Our RMB handler owns pitch; disable Cesium's native tilt/translate.
+      ssc.enableTilt = false;
+      ssc.enableTranslate = false;
+      // Remove the default north-up axis constraint so the camera can freely spin
+      // in any direction without self-correcting back to a fixed orientation.
+      // The "Fix Axis" button re-enables this constraint on demand.
+      try { ssc.constrainedAxis = undefined; } catch (e) {}
+
+      // Slightly heavier / less twitchy than defaults ( ScreenSpaceCameraController ).
+      ssc.maximumMovementRatio = 0.075;
+      ssc.inertiaSpin = 0.88;
+      ssc._maximumRotateRate = 1.45;
+    } catch (e) {}
+  }
+
   // --- Zoom (MapLibre scrollZoom tuned for consistency) ---
   // Custom wheel handlers are inconsistent across devices because deltaY varies
   // (trackpad vs mouse wheel vs pinch/ctrl zoom). Let MapLibre normalize input.
@@ -33,7 +58,9 @@ export function applyInteractionWeight(ctx) {
   } catch (e) {}
 
   // --- Pitch (RMB drag with velocity + friction) ---
-  let pitchPos = map.getPitch();
+  // pitchPos is lazily synced from the live camera at the start of each drag
+  // so stale values can never cause a snap/reset.
+  let pitchPos = map.getPitch?.() ?? 0;
   let pitchVel = 0;
   let pitchActive = false;
   let pitchRaf = 0;
@@ -57,10 +84,13 @@ export function applyInteractionWeight(ctx) {
     pitchPos += pitchVel * k;
     pitchPos = clamp(pitchPos, 0, 89.99);
 
-    map.jumpTo({ pitch: pitchPos });
+    map.jumpTo?.({ pitch: pitchPos });
 
+    // Continue only while dragging or still coasting; stop when settled.
     if (pitchActive || Math.abs(pitchVel) > 0.01) {
       pitchRaf = requestAnimationFrame(pitchTick);
+    } else {
+      pitchRaf = 0; // loop fully stopped – Cesium camera is now in control
     }
   };
 
@@ -78,9 +108,12 @@ export function applyInteractionWeight(ctx) {
         try { map.jumpTo({ pitch: 0, bearing: 0 }); } catch (e) {}
         return;
       }
-      pitchPos = clamp(Number(pitch), 0, 89.99);
+      // Always cancel any running coasting loop before overriding position.
+      cancelAnimationFrame(pitchRaf);
+      pitchRaf = 0;
       pitchVel = 0;
-      try { map.jumpTo({ pitch: pitchPos }); } catch (e) {}
+      pitchPos = clamp(Number(pitch), 0, 89.99);
+      try { map.jumpTo?.({ pitch: pitchPos }); } catch (e) {}
     }
   };
 
@@ -103,6 +136,9 @@ export function applyInteractionWeight(ctx) {
     rmbDown = true;
     rmbPid = e.pointerId;
     rmbLastY = e.clientY;
+    // Sync pitchPos from the live camera so we never jump from a stale value.
+    pitchPos = map.getPitch?.() ?? pitchPos;
+    pitchVel = 0;
     pitchActive = true;
     try { canvas.setPointerCapture(rmbPid); } catch (err) {}
     startPitchLoop();

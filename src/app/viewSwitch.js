@@ -16,6 +16,23 @@ export async function switchView(ctx, view) {
     return;
   }
 
+  // Cesium renderer: no style bundles; just update state and re-apply scene toggles.
+  if (ctx.renderer === 'cesium' || !map || typeof map.setStyle !== 'function') {
+    state.currentView = view;
+    state.overlayLayerIds = [];
+    state.inspectableLayerIds = [];
+    state.supportsCartographyToggle = false;
+    try {
+      syncViewState(ctx);
+      applyCommonScene(ctx);
+      setOverlayVisibility(ctx, state.labelsVisible);
+      syncToggleState(ctx);
+      elements.status.textContent = 'View updated.';
+      window.setTimeout(() => elements.status.classList.add('is-hidden'), 700);
+    } catch (e) {}
+    return;
+  }
+
   state.currentView = view;
   syncViewState(ctx);
   elements.status.classList.remove('is-hidden');

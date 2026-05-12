@@ -1,4 +1,3 @@
-import type { Marker } from 'maplibre-gl';
 import { createAppState } from './state';
 import { getDomRefs } from './dom';
 
@@ -7,7 +6,9 @@ export type AppContext = {
   elements: ReturnType<typeof getDomRefs>;
   maplibregl: any;
   map: any;
-  locationMarkers: Marker[];
+  viewer?: any;
+  renderer?: 'maplibre' | 'cesium';
+  locationMarkers: any[];
   atmosphereOverlayUnsub?: (() => void) | null;
 };
 
@@ -21,6 +22,8 @@ export function createAppContext(): AppContext {
     elements: getDomRefs(),
     maplibregl: null,
     map: null,
+    viewer: null,
+    renderer: null,
     locationMarkers: [],
     atmosphereOverlayUnsub: null
   };

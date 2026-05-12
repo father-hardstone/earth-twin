@@ -1,4 +1,5 @@
 import { SATELLITE_SOURCE_ID } from '../config/sources.js';
+import * as Cesium from 'cesium';
 
 const CITY_LIGHTS_SOURCE_ID = 'gibs-city-lights';
 const CITY_LIGHTS_LAYER_ID = 'gibs-city-lights-layer';
@@ -10,10 +11,32 @@ let protocolRegistered = false;
 let lastBucket = null;
 
 export function applyLighting(ctx) {
-  const { map, state } = ctx;
-  if (!map) {
+  const { map, state, viewer } = ctx;
+
+  // Cesium: use clock + globe lighting for a realistic terminator.
+  if (ctx.renderer === 'cesium' && viewer) {
+    try {
+      // Use Cesium's physically-based sun lighting on the WGS84 ellipsoid.
+      viewer.scene.globe.enableLighting = true;
+
+      const now = Cesium.JulianDate.now();
+      if (state.realtimeLightingEnabled) {
+        viewer.clock.currentTime = now;
+        viewer.clock.multiplier = 1;
+        viewer.clock.shouldAnimate = true;
+      } else {
+        // Freeze time, but allow a manual "day" vs "night" toggle by shifting 12h.
+        viewer.clock.currentTime =
+          state.lighting === 'night'
+            ? Cesium.JulianDate.addHours(now, 12, new Cesium.JulianDate())
+            : now;
+        viewer.clock.shouldAnimate = false;
+      }
+    } catch {}
     return;
   }
+
+  if (!map) return;
 
   const zoom = map.getZoom();
   const orbital = zoom <= 5.2;

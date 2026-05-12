@@ -10,7 +10,9 @@
   },
   "dependencies": {
     "@shoelace-style/shoelace": "^2.20.1",
-    "maplibre-gl": "^5.22.0"
+    "cesium": "^1.141.0",
+    "maplibre-gl": "^5.22.0",
+    "vite-plugin-cesium": "^1.2.23"
   },
   "devDependencies": {
     "typescript": "^6.0.2",

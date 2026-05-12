@@ -799,6 +799,62 @@ input {
 }
 
 /* Controls FAB */
+.nav-controls {
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  z-index: 120;
+}
+
+.nav-controls__group {
+  display: flex;
+  flex-direction: column;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.35);
+}
+
+.nav-controls__btn {
+  appearance: none;
+  border: 0;
+  padding: 0;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  font: 600 18px/1 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji",
+    "Segoe UI Emoji";
+  color: rgba(0, 0, 0, 0.78);
+  background: rgba(255, 255, 255, 0.94);
+  cursor: pointer;
+  user-select: none;
+}
+
+.nav-controls__btn + .nav-controls__btn {
+  border-top: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.nav-controls__btn:hover {
+  background: rgba(255, 255, 255, 1);
+}
+
+.nav-controls__btn:active {
+  background: rgba(240, 240, 240, 1);
+}
+
+.nav-controls__btn--square {
+  border-radius: 6px;
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.35);
+}
+
+/* Compass button: rotates to reflect current bearing */
+#btn-reset-north {
+  transition: transform 0.15s ease-out;
+}
+
 .top-right-tools {
   position: absolute;
   top: 1.5rem;
@@ -824,7 +880,8 @@ input {
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 }
 
-.tool-btn sl-icon {
+.tool-btn sl-icon,
+.tool-btn svg {
   font-size: 1.35rem;
   display: block;
   line-height: 1;
@@ -923,6 +980,41 @@ sl-switch::part(control) {
   background: rgba(255, 255, 255, 0.03);
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.api-metrics {
+  margin-top: 1rem;
+}
+
+.api-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.api-list li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.65rem 0.75rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+}
+
+.api-name {
+  font-size: 0.82rem;
+  color: rgba(228, 235, 255, 0.85);
+}
+
+.api-url {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.7);
+  white-space: normal;
+  word-break: break-word;
 }
 
 .metric-item {

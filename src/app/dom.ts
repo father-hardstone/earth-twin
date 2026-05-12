@@ -12,6 +12,7 @@ export type DomRefs = {
   status: HTMLElement;
   zoomLabel: HTMLElement;
   zoomValue: HTMLElement;
+  heightValue: HTMLElement;
   coordsValue: HTMLElement;
   terrainRange: SlRange;
   terrainValue: HTMLElement;
@@ -38,9 +39,14 @@ export type DomRefs = {
   btnGeolocation: SlButton;
   btnCapture: HTMLButtonElement;
   btnLockAxis: HTMLButtonElement;
+  btnZoomIn: HTMLButtonElement;
+  btnZoomOut: HTMLButtonElement;
+  btnResetNorth: HTMLButtonElement;
+  btnFullscreen: HTMLButtonElement;
   dayNightContainer: HTMLElement;
 
   locations: HTMLElement;
+  apiList: HTMLElement;
 };
 
 export function getDomRefs(): DomRefs {
@@ -48,6 +54,7 @@ export function getDomRefs(): DomRefs {
     status: req('#status'),
     zoomLabel: req('#zoom-label'),
     zoomValue: req('#zoom-value'),
+    heightValue: req('#height-value'),
     coordsValue: req('#coords-value'),
     terrainRange: req('#terrain-range'),
     terrainValue: req('#terrain-value'),
@@ -74,9 +81,13 @@ export function getDomRefs(): DomRefs {
     btnGeolocation: req('#btn-geolocation'),
     btnCapture: req('#btn-capture'),
     btnLockAxis: req('#btn-lock-axis'),
+    btnZoomIn: req('#btn-zoom-in'),
+    btnZoomOut: req('#btn-zoom-out'),
+    btnResetNorth: req('#btn-reset-north'),
+    btnFullscreen: req('#btn-fullscreen'),
     dayNightContainer: req('#day-night-container'),
 
-    locations: req('#locations')
+    locations: req('#locations'),
+    apiList: req('#api-list')
   };
 }
-

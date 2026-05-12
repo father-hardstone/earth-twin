@@ -9,13 +9,16 @@ export function buildFeatureMeta(feature) {
 export function removePopup(ctx) {
   const { state } = ctx;
   if (state.popup) {
-    state.popup.remove();
+    try {
+      state.popup.remove();
+    } catch {}
     state.popup = null;
   }
 }
 
 export function showPopup(ctx, lngLat, feature) {
   const { map, maplibregl, state } = ctx;
+  if (!map || !maplibregl || typeof maplibregl.Popup !== 'function') return;
   removePopup(ctx);
 
   const wrapper = document.createElement('div');

@@ -108,12 +108,29 @@ export function renderAppShell() {
 
     <div id="map" aria-label="Interactive 3D map of Earth"></div>
 
+    <div class="nav-controls" aria-label="Navigation controls">
+      <div class="nav-controls__group" role="group" aria-label="Zoom and rotation controls">
+        <button id="btn-zoom-in" class="nav-controls__btn" type="button" aria-label="Zoom in">+</button>
+        <button id="btn-zoom-out" class="nav-controls__btn" type="button" aria-label="Zoom out">−</button>
+        <button id="btn-reset-north" class="nav-controls__btn" type="button" aria-label="Reset north">▲</button>
+      </div>
+      <button id="btn-fullscreen" class="nav-controls__btn nav-controls__btn--square" type="button" aria-label="Toggle fullscreen">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+          <path fill="currentColor" d="M7 14H5v5h5v-2H7v-3zm0-4h2V7h3V5H5v5zm10 9h-3v2h5v-5h-2v3zm0-14V7h-3v2h5V5h-2z"/>
+        </svg>
+      </button>
+    </div>
+
     <div class="top-right-tools">
       <button id="btn-capture" class="tool-btn" aria-label="Capture View">
-        <sl-icon name="camera"></sl-icon>
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+          <path fill="currentColor" d="M9 4l-1.5 2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-2.5L15 4H9zm3 15a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-2.2a2.8 2.8 0 1 0 0-5.6 2.8 2.8 0 0 0 0 5.6z"/>
+        </svg>
       </button>
       <button id="btn-lock-axis" class="tool-btn" aria-label="Toggle Fixed Axis">
-        <sl-icon name="compass"></sl-icon>
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+          <path fill="currentColor" d="M12 2a10 10 0 1 0 .001 20.001A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 .001-16.001A8 8 0 0 1 12 20zm3.9-12.9l-5 2.1-2.1 5 5-2.1 2.1-5zm-4.1 6.9a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/>
+        </svg>
       </button>
     </div>
 
@@ -141,9 +158,20 @@ export function renderAppShell() {
           <span id="zoom-value">0.00</span>
         </div>
         <div class="metric-item">
+          <span class="label">Height:</span>
+          <span id="height-value">-- km</span>
+        </div>
+        <div class="metric-item">
           <span class="label">Center:</span>
           <span id="coords-value">0.00, 0.00</span>
         </div>
+      </section>
+
+      <section class="api-metrics" aria-label="Data sources and APIs">
+        <div class="section-heading">
+          <h2>APIs</h2>
+        </div>
+        <ul id="api-list" class="api-list"></ul>
       </section>
 
       <section class="control-group" aria-label="Scene controls">
@@ -231,4 +259,3 @@ export function renderAppShell() {
     </div>
   `;
 }
-

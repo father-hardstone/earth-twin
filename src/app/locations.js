@@ -26,6 +26,9 @@ export function renderLocationButtons(ctx) {
 
 export function addLocationMarker(ctx, location) {
   const { map, maplibregl } = ctx;
+  if (!map || !maplibregl || typeof maplibregl.Marker !== 'function') {
+    return null;
+  }
   const markerElement = document.createElement('button');
   markerElement.type = 'button';
   markerElement.className = 'city-marker';

@@ -11,6 +11,7 @@ function attachAtmosphereOverlayUpdater(ctx) {
   const { map } = ctx;
   const mapEl = document.getElementById('map');
   if (!map || !mapEl) return () => {};
+  if (ctx.renderer !== 'maplibre') return () => {};
 
   const update = () => {
     try {
@@ -37,16 +38,29 @@ function attachAtmosphereOverlayUpdater(ctx) {
       const radiusPx = (metrics.radiusPx ?? Math.min(w, h) * 0.32);
       const yShiftPx = metrics.yShiftPx ?? 0;
 
-      // Sun tracking: Calculate Sun's screen center for the glow gradient
-      const sunPos = getSubsolarPoint(new Date());
-      const sunScreenPos = map.project([sunPos.lon, sunPos.lat]);
-      
-      const sunOffsetX = sunScreenPos.x - w / 2;
-      const sunOffsetY = sunScreenPos.y - h / 2;
-      
-      const glowLimit = radiusPx * 0.8;
-      const gx = clamp(sunOffsetX, -glowLimit, glowLimit);
-      const gy = clamp(sunOffsetY, -glowLimit, glowLimit);
+// Sun tracking: Calculate Sun's screen center for the glow gradient.
+// Using current map state ensures stability and prevents constant spinning/waving artifacts.
+const sunPos = getSubsolarPoint(new Date());
+const sunScreenPos = map.project([sunPos.lon, sunPos.lat]);
+
+let sunOffsetX = sunScreenPos.x - w / 2;
+let sunOffsetY = sunScreenPos.y - h / 2;
+
+// Eclipse Check: If the projected sun position is too close to the map center (w/2, h/2), 
+// it suggests an occlusion effect or being viewed edge-on, reducing visibility proportionally.
+const eclipseThreshold = radiusPx * 0.95; // Defines how close to the globe center it needs to be for dimming.
+const dist = Math.hypot(sunScreenPos.x - w / 2, sunScreenPos.y - h / 2);
+
+if (dist < eclipseThreshold) {
+  // Dimming factor: Scales offsets down when distance is small (close to center/eclipsed).
+  const occlusionFactor = Math.max(0, 1 - dist / eclipseThreshold);
+  sunOffsetX *= occlusionFactor;
+  sunOffsetY *= occlusionFactor;
+}
+
+// Pass the full calculated offsets for maximum natural flow and avoid artificial clamping artifacts.
+let gx = sunOffsetX;
+let gy = sunOffsetY;
 
       // 5. Visual refinement
       const zoomN = clamp((zoom - 1) / 15, 0, 1);
@@ -98,6 +112,10 @@ export function enforceOrientationConstraints(ctx) {
   const axisLock = Boolean(state.fixedAxis) && !hardLock;
 
   if (!map) return;
+  if (ctx.renderer === 'cesium') {
+    // Cesium camera constraints are handled elsewhere; keep UI state consistent.
+    return;
+  }
 
   // Ensure drag interaction is enabled (unless explicitly disabled elsewhere).
   try {
@@ -220,6 +238,15 @@ export function estimateGlobeScreenMetrics(map, centerLat, centerLng) {
 
 export function applyCommonScene(ctx) {
   const { map, state } = ctx;
+
+  // Cesium renderer: rely on Cesium's native globe/lighting; keep only DOM overlay toggles.
+  if (ctx.renderer === 'cesium') {
+    const atmosphereActive = Boolean(state.atmosphereEnabled) && state.currentView !== VIEW.DARK;
+    const mapEl = document.getElementById('map');
+    if (mapEl) mapEl.classList.toggle('atmosphere-on', atmosphereActive);
+    applyLighting(ctx);
+    return;
+  }
   if (!map) return;
   const styleLoaded = Boolean(map.isStyleLoaded?.());
 
@@ -333,9 +360,11 @@ export function setOverlayVisibility(ctx, visible) {
   const enabled = visible && state.supportsCartographyToggle;
 
   state.overlayLayerIds.forEach((layerId) => {
-    if (map.getLayer(layerId)) {
-      map.setLayoutProperty(layerId, 'visibility', enabled ? 'visible' : 'none');
-    }
+    try {
+      if (map?.getLayer?.(layerId)) {
+        map.setLayoutProperty(layerId, 'visibility', enabled ? 'visible' : 'none');
+      }
+    } catch (e) {}
   });
 
   // Location markers are DOM-based (MapLibre Markers), so they aren't affected by style layers.

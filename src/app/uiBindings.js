@@ -10,7 +10,8 @@ import { applyLighting } from '../services/night.js';
 
 function clampLatForGlobe(ctx) {
   const { map, state } = ctx;
-  if (!map || state.projection !== 'globe') return;
+  // Cesium globe supports full latitude range; only clamp for MapLibre's WebMercator math.
+  if (!map || state.projection !== 'globe' || ctx.renderer !== 'maplibre') return;
   try {
     const c = map.getCenter();
     if (!c) return;
@@ -183,14 +184,15 @@ export function bindUi(ctx, router) {
     if (!ctx.map) return;
     try {
       // Force a repaint to ensure the drawing buffer is populated
+      const originalScale = ctx.viewer.resolutionScale;
+      ctx.viewer.resolutionScale = 2.5; // Boost resolution for capture
+      
       ctx.map.triggerRepaint();
       
       // Capture after the next render cycle to ensure we don't get a blank/cleared buffer
       ctx.map.once('render', () => {
         const canvas = ctx.map.getCanvas();
 
-        // Composite onto black so the translucent sky texture doesn't look see-through
-        // in the exported image (keep runtime translucency unchanged).
         const out = document.createElement('canvas');
         out.width = canvas.width;
         out.height = canvas.height;
@@ -200,15 +202,18 @@ export function bindUi(ctx, router) {
           g.fillRect(0, 0, out.width, out.height);
           g.drawImage(canvas, 0, 0);
         }
-        const dataUrl = (g ? out : canvas).toDataURL('image/png');
+        const dataUrl = (g ? out : canvas).toDataURL('image/png', 1.0);
 
         const link = document.createElement('a');
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-        link.download = `twin-earth-${timestamp}.png`;
+        link.download = `twin-earth-uhd-${timestamp}.png`;
         link.href = dataUrl;
         link.click();
         
-        elements.status.textContent = 'Snapshot saved to downloads.';
+        ctx.viewer.resolutionScale = originalScale;
+        ctx.map.triggerRepaint();
+        
+        elements.status.textContent = 'Ultra HD Snapshot saved.';
         elements.status.classList.remove('is-hidden');
         window.setTimeout(() => elements.status.classList.add('is-hidden'), 2500);
       });
@@ -218,89 +223,128 @@ export function bindUi(ctx, router) {
     }
   });
 
+  // --- Navigation Controls (Right Side) ---
+  const nudgeZoom = (delta) => {
+    if (!ctx.map) return;
+    const current = Number(ctx.map.getZoom?.() ?? 2);
+    const next = current + delta;
+    try {
+      ctx.map.flyTo?.({ zoom: next, duration: 0.4 });
+    } catch (e) {
+      try {
+        ctx.map.jumpTo?.({ zoom: next });
+      } catch {}
+    }
+  };
+
+  elements.btnZoomIn.addEventListener('click', () => nudgeZoom(+0.6));
+  elements.btnZoomOut.addEventListener('click', () => nudgeZoom(-0.6));
+
+  elements.btnResetNorth.addEventListener('click', () => {
+    if (!ctx.map) return;
+    // Reset both bearing (north up) and pitch (top-down view).
+    try {
+      ctx.map.easeTo?.({ bearing: 0, pitch: 0, duration: 0.5 });
+    } catch (e) {
+      try {
+        ctx.map.jumpTo?.({ bearing: 0, pitch: 0 });
+      } catch {}
+    }
+    // Sync the pitch slider UI.
+    try {
+      if (elements.pitchRange) elements.pitchRange.value = 0;
+      if (elements.pitchValue) elements.pitchValue.textContent = '0 deg';
+      if (ctx.cameraController?.setPitch) ctx.cameraController.setPitch(0);
+    } catch (e) {}
+  });
+
+  elements.btnFullscreen.addEventListener('click', async () => {
+    const target = ctx.map?.getContainer?.() ?? document.documentElement;
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else if (target?.requestFullscreen) {
+        await target.requestFullscreen();
+      }
+    } catch (e) {}
+  });
+
   elements.btnLockAxis.addEventListener('click', () => {
     if (!ctx.map) return;
     state.fixedAxis = !state.fixedAxis;
     const isLocked = state.fixedAxis;
-    
+
     elements.btnLockAxis.classList.toggle('is-active', isLocked);
-    
+
+    const ssc = ctx.viewer?.scene?.screenSpaceCameraController;
+    const CesiumRef = ctx.Cesium;
+
     if (isLocked) {
-      // Lock tilt (pitch) only, but keep rotation (bearing) enabled.
-      try { ctx.map.jumpTo({ pitch: 0 }); } catch (e) {}
-
-      // Clamp pitch to 0 so *any* gesture can't change it while locked.
-      // Store previous bounds so we can restore on unlock.
-      if (!ctx._prevPitchBounds) {
-        try {
-          ctx._prevPitchBounds = {
-            min: typeof ctx.map.getMinPitch === 'function' ? ctx.map.getMinPitch() : 0,
-            max: typeof ctx.map.getMaxPitch === 'function' ? ctx.map.getMaxPitch() : 89.99
-          };
-        } catch (e) {
-          ctx._prevPitchBounds = { min: 0, max: 89.99 };
-        }
+      // Fix the rotation axis to Earth's north-south pole (UNIT_Z).
+      // This is the same constraint Cesium applies by default, which keeps
+      // north always "up" and makes the camera self-correct its orientation.
+      if (ssc && CesiumRef) {
+        try { ssc.constrainedAxis = CesiumRef.Cartesian3.UNIT_Z; } catch (e) {}
       }
-      try { ctx.map.setMinPitch?.(0); } catch (e) {}
-      try { ctx.map.setMaxPitch?.(0); } catch (e) {}
 
+      // Snap bearing to north and pitch to zero so the axis is cleanly aligned on lock.
+      try { ctx.map.jumpTo({ bearing: 0, pitch: 0 }); } catch (e) {}
       try {
-        ctx.map.dragRotate?.enable?.();
-        ctx.map.touchZoomRotate?.enableRotation?.();
-        ctx.map.keyboard?.enableRotation?.();
-        ctx.map.touchPitch?.disable?.();
+        if (elements.pitchRange) elements.pitchRange.value = 0;
+        if (elements.pitchValue) elements.pitchValue.textContent = '0 deg';
+        if (ctx.cameraController?.setPitch) ctx.cameraController.setPitch(0);
       } catch (e) {}
 
-      // Keep a stable handler reference so we can remove it on unlock.
+      // Enforce: keep bearing at 0 while axis is locked so dragging can't
+      // rotate the camera off-axis.
       if (ctx._fixedAxisEnforcer) {
         try { ctx.map.off('move', ctx._fixedAxisEnforcer); } catch (e) {}
         try { ctx.map.off('rotate', ctx._fixedAxisEnforcer); } catch (e) {}
-        try { ctx.map.off('pitch', ctx._fixedAxisEnforcer); } catch (e) {}
       }
       ctx._fixedAxisEnforcer = () => {
         if (!state.fixedAxis) return;
         try {
-          const p = ctx.map.getPitch?.() ?? 0;
-          if (Math.abs(p) > 0.0001) {
-            ctx.map.jumpTo({ pitch: 0 });
-          }
+          const b = ctx.map.getBearing?.() ?? 0;
+          if (Math.abs(b) > 0.1) ctx.map.jumpTo?.({ bearing: 0 });
         } catch (e) {}
       };
-
       try { ctx.map.on('move', ctx._fixedAxisEnforcer); } catch (e) {}
       try { ctx.map.on('rotate', ctx._fixedAxisEnforcer); } catch (e) {}
-      try { ctx.map.on('pitch', ctx._fixedAxisEnforcer); } catch (e) {}
 
-      elements.status.textContent = 'Tilt Locked';
+      elements.status.textContent = 'Axis Locked (North Up)';
     } else {
-      // Remove the force handler and re-enable rotation/pitch.
+      // Remove the bearing enforcer.
       if (ctx._fixedAxisEnforcer) {
         try { ctx.map.off('move', ctx._fixedAxisEnforcer); } catch (e) {}
         try { ctx.map.off('rotate', ctx._fixedAxisEnforcer); } catch (e) {}
-        try { ctx.map.off('pitch', ctx._fixedAxisEnforcer); } catch (e) {}
         ctx._fixedAxisEnforcer = null;
       }
 
-      // Restore pitch bounds and interactions.
-      if (ctx._prevPitchBounds) {
-        try { ctx.map.setMinPitch?.(ctx._prevPitchBounds.min); } catch (e) {}
-        try { ctx.map.setMaxPitch?.(ctx._prevPitchBounds.max); } catch (e) {}
-        ctx._prevPitchBounds = null;
+      // Release the axis constraint so the camera can freely orbit in any direction.
+      if (ssc) {
+        try { ssc.constrainedAxis = undefined; } catch (e) {}
       }
 
-      try {
-        ctx.map.dragRotate?.enable?.();
-        ctx.map.touchZoomRotate?.enableRotation?.();
-        ctx.map.touchPitch?.enable?.();
-        ctx.map.keyboard?.enableRotation?.();
-      } catch (e) {}
-
-      elements.status.textContent = 'Tilt Unlocked';
+      elements.status.textContent = 'Axis Free';
     }
-    
+
     elements.status.classList.remove('is-hidden');
     window.setTimeout(() => elements.status.classList.add('is-hidden'), 1500);
   });
+
+  // --- Compass bearing indicator ---
+  // Rotate the ▲ button to visually reflect the current camera heading.
+  const updateCompassRotation = () => {
+    if (!ctx.map) return;
+    try {
+      const bearing = ctx.map.getBearing?.() ?? 0;
+      elements.btnResetNorth.style.transform = `rotate(${-bearing}deg)`;
+    } catch (e) {}
+  };
+  // Run on every camera move event.
+  try { ctx.map?.on?.('move', updateCompassRotation); } catch (e) {}
+  // Initial sync.
+  updateCompassRotation();
 
   // --- Geolocation ---
   elements.btnGeolocation.addEventListener('click', () => {

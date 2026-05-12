@@ -207,6 +207,9 @@ export function setCloudsEnabled(ctx, enabled) {
   const { state, map } = ctx;
   state.cloudsEnabled = enabled;
 
+  if (ctx.renderer === 'cesium') {
+    return;
+  }
   if (!map) {
     return;
   }
@@ -233,6 +236,7 @@ export function stopCloudsAnimation(ctx) {
 
 export function addOrRefreshClouds(ctx) {
   const { map, state } = ctx;
+  if (ctx.renderer === 'cesium') return;
   if (!map || !state.cloudsEnabled) {
     return;
   }
@@ -268,6 +272,7 @@ export function addOrRefreshClouds(ctx) {
 
 export function removeClouds(ctx) {
   const { map } = ctx;
+  if (ctx.renderer === 'cesium') return;
   if (!map) {
     return;
   }
@@ -281,6 +286,7 @@ export function removeClouds(ctx) {
 
 export function updateCloudsForZoom(ctx) {
   const { map, state } = ctx;
+  if (ctx.renderer === 'cesium') return;
   if (!map || !state.cloudsEnabled) {
     return;
   }

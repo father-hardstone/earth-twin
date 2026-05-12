@@ -1,4 +1,4 @@
-import 'maplibre-gl/dist/maplibre-gl.css';
+import 'cesium/Build/Cesium/Widgets/widgets.css';
 import './styles.css';
 
 import '@shoelace-style/shoelace/dist/themes/dark.css';
