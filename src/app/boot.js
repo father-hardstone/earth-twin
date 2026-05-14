@@ -152,7 +152,7 @@ export async function boot() {
   } catch (e) {}
 
   const initialView = readViewFromHash();
-  initCesiumGlobe(ctx, mapEl, initialView);
+  await initCesiumGlobe(ctx, mapEl, initialView);
   const { map } = ctx;
 
   // Cesium replaces MapLibre projection switching; keep UI in a consistent state.

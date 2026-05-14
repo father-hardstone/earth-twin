@@ -6,6 +6,8 @@ export type AppState = {
   lighting: 'day' | 'night';
   realtimeLightingEnabled: boolean;
   terrainEnabled: boolean;
+  buildingsEnabled: boolean;
+  waterMaskEnabled: boolean;
   terrainExaggeration: number;
   labelsVisible: boolean;
   autoSpin: boolean;
@@ -25,6 +27,7 @@ export type AppState = {
   isFlipping: boolean;
   popup: unknown;
   fixedAxis: boolean;
+  fov: number;
 };
 
 export function createAppState(): AppState {
@@ -34,6 +37,8 @@ export function createAppState(): AppState {
     lighting: 'day',
     realtimeLightingEnabled: false,
     terrainEnabled: false,
+    buildingsEnabled: false,
+    waterMaskEnabled: false,
     terrainExaggeration: 1.15,
     labelsVisible: false,
     autoSpin: false,
@@ -52,7 +57,7 @@ export function createAppState(): AppState {
     supportsCartographyToggle: true,
     isFlipping: false,
     popup: null,
-    fixedAxis: false
+    fixedAxis: false,
+    fov: 60
   };
 }
-

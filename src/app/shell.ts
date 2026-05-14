@@ -108,7 +108,13 @@ export function renderAppShell() {
 
     <div id="map" aria-label="Interactive 3D map of Earth"></div>
 
+    <div id="api-ticker" class="api-ticker" aria-label="Data source credits">
+      <span class="ticker-label">Powered by:</span>
+      <span id="api-ticker-content" class="ticker-content"></span>
+    </div>
+
     <div class="nav-controls" aria-label="Navigation controls">
+      <div id="fps-monitor" class="fps-monitor" aria-label="Frames per second">0 FPS</div>
       <div class="nav-controls__group" role="group" aria-label="Zoom and rotation controls">
         <button id="btn-zoom-in" class="nav-controls__btn" type="button" aria-label="Zoom in">+</button>
         <button id="btn-zoom-out" class="nav-controls__btn" type="button" aria-label="Zoom out">−</button>
@@ -142,120 +148,140 @@ export function renderAppShell() {
 
     <aside id="side-panel" class="panel glass">
       <header class="panel-header">
-        <h1 id="back-to-landing" class="brand-logo brand-link">Twin Earth</h1>
-        <button id="close-controls" class="panel-close" type="button" aria-label="Close controls">
-          &times;
+        <div class="panel-header__title">
+          <span class="panel-header__icon">🌍</span>
+          <h1 id="back-to-landing">Earth Twin</h1>
+        </div>
+        <button id="close-controls" class="btn-icon" aria-label="Close panel">
+          <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><path d="M18 6L6 18M6 6l12 12"/></svg>
         </button>
       </header>
 
-      <section class="compact-metrics" aria-label="Viewport status">
-        <div class="metric-item">
-          <span class="label">Scale:</span>
-          <span id="zoom-label">Orbital</span>
-        </div>
-        <div class="metric-item">
-          <span class="label">Zoom:</span>
-          <span id="zoom-value">0.00</span>
-        </div>
-        <div class="metric-item">
-          <span class="label">Height:</span>
-          <span id="height-value">-- km</span>
-        </div>
-        <div class="metric-item">
-          <span class="label">Center:</span>
-          <span id="coords-value">0.00, 0.00</span>
+      <!-- Navigation Hub -->
+      <section class="nav-hub">
+        <div class="coords-dms" id="coords-dms">0° 0' 0" N, 0° 0' 0" E</div>
+        
+        <div class="search-group">
+          <div class="input-row">
+            <input type="text" id="input-lat" placeholder="Lat" class="search-input search-input--small">
+            <input type="text" id="input-lng" placeholder="Lng" class="search-input search-input--small">
+          </div>
+          <div class="input-row">
+            <input type="text" id="input-place" placeholder="Search place..." class="search-input">
+            <button id="btn-pin-location" class="btn-pin" title="Go to location">📍</button>
+          </div>
         </div>
       </section>
 
-      <section class="api-metrics" aria-label="Data sources and APIs">
-        <div class="section-heading">
-          <h2>APIs</h2>
+      <section class="controls-section">
+        <!-- Zoom -->
+        <div class="control-row-complex">
+          <div class="control-row-header">
+            <span>Zoom</span>
+            <div class="control-row-actions">
+              <span id="zoom-value" class="value-badge">0</span>
+              <button id="btn-reset-zoom" class="btn-reset" title="Reset Zoom">↺</button>
+            </div>
+          </div>
+          <sl-range id="zoom-range" min="0" max="22" step="0.1" value="0"></sl-range>
         </div>
-        <ul id="api-list" class="api-list"></ul>
-      </section>
 
-      <section class="control-group" aria-label="Scene controls">
-        <div class="control-header">
-          <span>Terrain exaggeration</span>
-          <strong id="terrain-value">1.15x</strong>
+        <!-- Pitch -->
+        <div class="control-row-complex">
+          <div class="control-row-header">
+            <span>Pitch</span>
+            <div class="control-row-actions">
+              <span id="pitch-value" class="value-badge">0°</span>
+              <button id="btn-reset-pitch" class="btn-reset" title="Reset Pitch">↺</button>
+            </div>
+          </div>
+          <sl-range id="pitch-range" min="0" max="90" step="1" value="0"></sl-range>
         </div>
-        <sl-range
-          id="terrain-range"
-          min="1"
-          max="1.7"
-          step="0.05"
-          value="1.15"
-        ></sl-range>
 
-        <div class="control-header">
-          <span>Camera pitch</span>
-          <strong id="pitch-value">0 deg</strong>
+        <!-- FOV -->
+        <div class="control-row-complex">
+          <div class="control-row-header">
+            <span>Field of View</span>
+            <div class="control-row-actions">
+              <span id="fov-value" class="value-badge">70°</span>
+              <button id="btn-reset-fov" class="btn-reset" title="Reset FOV">↺</button>
+            </div>
+          </div>
+          <sl-range id="fov-range" min="30" max="120" step="1" value="70"></sl-range>
         </div>
-        <sl-range
-          id="pitch-range"
-          min="0"
-          max="89"
-          step="1"
-          value="0"
-        ></sl-range>
-      </section>
 
-      <section class="toggles-grid" aria-label="View controls">
+        <hr class="separator" />
+
+        <!-- Core Toggles -->
         <div class="control-row">
           <span>Dark Matter View</span>
           <sl-switch id="view-dark"></sl-switch>
         </div>
-        <hr class="separator" />
         <div class="control-row">
           <span>Globe Projection</span>
           <sl-switch id="proj-toggle" checked></sl-switch>
         </div>
-        <div class="control-row">
-          <span>Real-time Terminator</span>
-          <sl-switch id="light-realtime"></sl-switch>
+
+        <div id="day-night-container" class="day-night-group disabled">
+          <div class="control-row">
+            <span>Real-time Terminator</span>
+            <sl-switch id="light-realtime"></sl-switch>
+          </div>
+          <div class="control-row">
+            <span>Day/Night Lights</span>
+            <sl-switch id="light-toggle"></sl-switch>
+          </div>
         </div>
-        <div class="control-row" id="day-night-container">
-          <span>Day / Night Lights</span>
-          <sl-switch id="light-toggle"></sl-switch>
-        </div>
-        <hr class="separator" />
-        <div class="control-row">
-          <span>Cartography</span>
-          <sl-switch id="labels-toggle"></sl-switch>
-        </div>
-        <div class="control-row">
-          <span>Clouds</span>
-          <sl-switch id="clouds-toggle"></sl-switch>
-        </div>
-        <div class="control-row">
-          <span>Atmosphere</span>
-          <sl-switch id="atmos-toggle" checked></sl-switch>
-        </div>
-        <div class="control-row">
-          <span>Auto-spin</span>
-          <sl-switch id="spin-toggle"></sl-switch>
-        </div>
+
+        <!-- Environment Dropdown -->
+        <details class="control-dropdown">
+          <summary>Environment Settings</summary>
+          <div class="dropdown-content">
+            <div class="control-row">
+              <span>Atmosphere</span>
+              <sl-switch id="atmos-toggle" checked></sl-switch>
+            </div>
+            <div class="control-row">
+              <span>Clouds</span>
+              <sl-switch id="clouds-toggle"></sl-switch>
+            </div>
+            <div class="control-row">
+              <span>Auto-spin</span>
+              <sl-switch id="spin-toggle"></sl-switch>
+            </div>
+          </div>
+        </details>
+
+        <!-- Terrain Dropdown -->
+        <details class="control-dropdown">
+          <summary>Terrain & 3D Settings</summary>
+          <div class="dropdown-content">
+            <div class="control-row">
+              <span>3D Terrain</span>
+              <sl-switch id="terrain-toggle"></sl-switch>
+            </div>
+            <div class="control-row">
+              <span>3D Buildings</span>
+              <sl-switch id="buildings-toggle"></sl-switch>
+            </div>
+            <div class="control-row">
+              <span>3D Water Mask</span>
+              <sl-switch id="water-toggle"></sl-switch>
+            </div>
+          </div>
+        </details>
       </section>
 
-      <section class="locations-section" aria-label="Featured fly-to locations">
-        <div class="section-heading">
-          <h2>Featured landings</h2>
+      <section class="locations-section">
+        <h3>Featured Explorations</h3>
+        <div id="locations" class="locations-grid">
+          <!-- Buttons injected here -->
         </div>
-        <sl-button id="btn-geolocation" variant="primary" pill class="geo-btn">
-          <sl-icon slot="prefix" name="geo-alt"></sl-icon>
-          My Current Location
-        </sl-button>
-        <div id="locations" class="locations"></div>
       </section>
-
-      <p class="helper">
-        Scroll to zoom, right-drag to rotate, and hold <kbd>Ctrl</kbd> while
-        dragging to tilt on desktop.
-      </p>
+      
+      <div id="status" class="status-bar" role="status" aria-live="polite">
+        Ready
+      </div>
     </aside>
-
-    <div id="status" class="status glass" role="status" aria-live="polite">
-      Loading Twin Earth...
-    </div>
   `;
 }

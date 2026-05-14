@@ -10,16 +10,24 @@ function req<T extends Element>(selector: string): T {
 
 export type DomRefs = {
   status: HTMLElement;
-  zoomLabel: HTMLElement;
   zoomValue: HTMLElement;
-  heightValue: HTMLElement;
-  coordsValue: HTMLElement;
-  terrainRange: SlRange;
-  terrainValue: HTMLElement;
-  pitchRange: SlRange;
   pitchValue: HTMLElement;
+  fovValue: HTMLElement;
+  coordsDms: HTMLElement;
+  
+  inputLat: HTMLInputElement;
+  inputLng: HTMLInputElement;
+  inputPlace: HTMLInputElement;
+  btnPinLocation: HTMLButtonElement;
+  
+  btnResetZoom: HTMLButtonElement;
+  btnResetPitch: HTMLButtonElement;
+  btnResetFov: HTMLButtonElement;
 
-  labelsToggle: SlSwitch;
+  zoomRange: SlRange;
+  pitchRange: SlRange;
+  fovRange: SlRange;
+
   cloudsToggle: SlSwitch;
   atmosToggle: SlSwitch;
   spinToggle: SlSwitch;
@@ -27,6 +35,9 @@ export type DomRefs = {
   projToggle: SlSwitch;
   lightToggle: SlSwitch;
   lightRealtime: SlSwitch;
+  terrainToggle: SlSwitch;
+  buildingsToggle: SlSwitch;
+  waterToggle: SlSwitch;
 
   sidePanel: HTMLElement;
   toggleControls: HTMLButtonElement;
@@ -36,7 +47,6 @@ export type DomRefs = {
   goToMapHeroBtn: HTMLButtonElement;
   goToMapNavBtn: HTMLButtonElement;
   backToLandingBtn: HTMLElement;
-  btnGeolocation: SlButton;
   btnCapture: HTMLButtonElement;
   btnLockAxis: HTMLButtonElement;
   btnZoomIn: HTMLButtonElement;
@@ -46,22 +56,31 @@ export type DomRefs = {
   dayNightContainer: HTMLElement;
 
   locations: HTMLElement;
-  apiList: HTMLElement;
+  apiTickerContent: HTMLElement;
+  fpsMonitor: HTMLElement;
 };
 
 export function getDomRefs(): DomRefs {
   return {
     status: req('#status'),
-    zoomLabel: req('#zoom-label'),
     zoomValue: req('#zoom-value'),
-    heightValue: req('#height-value'),
-    coordsValue: req('#coords-value'),
-    terrainRange: req('#terrain-range'),
-    terrainValue: req('#terrain-value'),
-    pitchRange: req('#pitch-range'),
     pitchValue: req('#pitch-value'),
+    fovValue: req('#fov-value'),
+    coordsDms: req('#coords-dms'),
 
-    labelsToggle: req('#labels-toggle'),
+    inputLat: req('#input-lat'),
+    inputLng: req('#input-lng'),
+    inputPlace: req('#input-place'),
+    btnPinLocation: req('#btn-pin-location'),
+
+    btnResetZoom: req('#btn-reset-zoom'),
+    btnResetPitch: req('#btn-reset-pitch'),
+    btnResetFov: req('#btn-reset-fov'),
+
+    zoomRange: req('#zoom-range'),
+    pitchRange: req('#pitch-range'),
+    fovRange: req('#fov-range'),
+
     cloudsToggle: req('#clouds-toggle'),
     atmosToggle: req('#atmos-toggle'),
     spinToggle: req('#spin-toggle'),
@@ -69,6 +88,9 @@ export function getDomRefs(): DomRefs {
     projToggle: req('#proj-toggle'),
     lightToggle: req('#light-toggle'),
     lightRealtime: req('#light-realtime'),
+    terrainToggle: req('#terrain-toggle'),
+    buildingsToggle: req('#buildings-toggle'),
+    waterToggle: req('#water-toggle'),
 
     sidePanel: req('#side-panel'),
     toggleControls: req('#toggle-controls'),
@@ -78,7 +100,6 @@ export function getDomRefs(): DomRefs {
     goToMapHeroBtn: req('#go-to-map-hero'),
     goToMapNavBtn: req('#go-to-map-nav'),
     backToLandingBtn: req('#back-to-landing'),
-    btnGeolocation: req('#btn-geolocation'),
     btnCapture: req('#btn-capture'),
     btnLockAxis: req('#btn-lock-axis'),
     btnZoomIn: req('#btn-zoom-in'),
@@ -88,6 +109,7 @@ export function getDomRefs(): DomRefs {
     dayNightContainer: req('#day-night-container'),
 
     locations: req('#locations'),
-    apiList: req('#api-list')
+    apiTickerContent: req('#api-ticker-content'),
+    fpsMonitor: req('#fps-monitor')
   };
 }

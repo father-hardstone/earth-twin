@@ -1094,3 +1094,216 @@ sl-switch::part(control) {
     width: 100vw;
   }
 }
+
+/* API Ticker */
+.api-ticker {
+  position: absolute;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 1.25rem;
+  background: rgba(13, 22, 38, 0.6);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.6);
+  pointer-events: none;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.ticker-label {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #74b1ff;
+  white-space: nowrap;
+}
+
+.ticker-content {
+  display: inline-flex;
+  gap: 0.5rem;
+  align-items: center;
+  transition: opacity 0.4s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 40vw;
+}
+
+.ticker-name {
+  color: #fff;
+  font-weight: 600;
+}
+
+.ticker-url {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  opacity: 0.5;
+  font-size: 0.75rem;
+}
+.fps-monitor { display: flex; align-items: center; justify-content: center; padding: 0.4rem 0.8rem; background: rgba(13, 22, 38, 0.4); backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 8px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.7rem; font-weight: 700; color: rgba(255, 255, 255, 0.5); margin-right: 0.75rem; min-width: 3.5rem; pointer-events: none; }
+
+/* --- Navigation Hub --- */
+.nav-hub {
+  padding: 1.25rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.coords-dms {
+  font-family: ui-monospace, monospace;
+  font-size: 0.75rem;
+  color: var(--sl-color-primary-400);
+  margin-bottom: 0.75rem;
+  letter-spacing: 0.05em;
+  text-align: center;
+}
+
+.search-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.input-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.search-input {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  color: white;
+  font-size: 0.8rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.search-input:focus {
+  border-color: var(--sl-color-primary-500);
+}
+
+.search-input--small {
+  width: 50%;
+}
+
+.btn-pin {
+  background: var(--sl-color-primary-600);
+  border: none;
+  border-radius: 6px;
+  padding: 0 0.75rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-pin:hover {
+  background: var(--sl-color-primary-500);
+}
+
+/* --- Range Actions --- */
+.control-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-reset {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 0 0.25rem;
+  transition: color 0.2s;
+  line-height: 1;
+}
+
+.btn-reset:hover {
+  color: var(--sl-color-primary-400);
+}
+
+/* --- Dropdowns --- */
+.control-dropdown {
+  margin-top: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.control-dropdown summary {
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+  user-select: none;
+}
+
+.control-dropdown[open] summary {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.dropdown-content {
+  padding: 0.5rem 0.25rem;
+  display: flex;
+  flex-direction: column;
+}
+
+/* --- Locations Grid --- */
+.locations-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.loc-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 100px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.loc-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: var(--sl-color-primary-500);
+}
+
+/* Fix for close button centralization */
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+}
+
+.btn-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  transition: background 0.2s;
+}
+
+.btn-icon:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+

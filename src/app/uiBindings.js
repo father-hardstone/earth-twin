@@ -1,5 +1,6 @@
 import { VIEW } from '../services/styleBundle.js';
 import { findLocationById, flyToLocation } from './locations.js';
+import { FEATURED_LOCATIONS } from './constants.js';
 import { schedulePitchUpdate } from './pitch.js';
 import { scheduleSpin } from './spin.js';
 import { scheduleTerrainUpdate } from './terrain.js';
@@ -8,35 +9,21 @@ import { switchView } from './viewSwitch.js';
 import { setCloudsEnabled } from '../services/clouds.js';
 import { applyLighting } from '../services/night.js';
 
-function clampLatForGlobe(ctx) {
-  const { map, state } = ctx;
-  // Cesium globe supports full latitude range; only clamp for MapLibre's WebMercator math.
-  if (!map || state.projection !== 'globe' || ctx.renderer !== 'maplibre') return;
-  try {
-    const c = map.getCenter();
-    if (!c) return;
-    // WebMercator cannot represent beyond ~±85.0511. Keep geolocation within
-    // that range so map math stays stable, while pole-rollover (mapEvents)
-    // handles seamless traversal near the poles.
-    const WEB_MERCATOR_MAX_LAT = 85.05112878;
-    const safe = WEB_MERCATOR_MAX_LAT - 0.001;
-    const clampedLat = Math.max(-safe, Math.min(safe, c.lat));
-    if (Math.abs(clampedLat - c.lat) > 0.0001) {
-      map.jumpTo({ center: [c.lng, clampedLat] });
-    }
-  } catch (e) {}
-}
+function toDMS(decimal, isLat) {
+  const absolute = Math.abs(decimal);
+  const degrees = Math.floor(absolute);
+  const minutesNotTruncated = (absolute - degrees) * 60;
+  const minutes = Math.floor(minutesNotTruncated);
+  const seconds = Math.floor((minutesNotTruncated - minutes) * 60);
 
-function resetPitchToZero(ctx) {
-  const { map, elements } = ctx;
-  try {
-    if (elements.pitchRange) elements.pitchRange.value = 0;
-    if (elements.pitchValue) elements.pitchValue.textContent = '0 deg';
-  } catch (e) {}
-  try {
-    // Use the same path as the range slider to avoid "no-op" jumpTo states.
-    schedulePitchUpdate(ctx, 0);
-  } catch (e) {}
+  let direction = '';
+  if (isLat) {
+    direction = decimal >= 0 ? 'N' : 'S';
+  } else {
+    direction = decimal >= 0 ? 'E' : 'W';
+  }
+
+  return `${degrees}° ${minutes}' ${seconds}" ${direction}`;
 }
 
 export function bindUi(ctx, router) {
@@ -59,7 +46,7 @@ export function bindUi(ctx, router) {
     router.navigate('/landing');
   });
 
-  // Handle Landing Page Scroll (Toggle Header)
+  // Handle Landing Page Scroll
   elements.landingPage.addEventListener('scroll', () => {
     const isScrolled = elements.landingPage.scrollTop > 100;
     elements.landingHeader.classList.toggle('scrolled', isScrolled);
@@ -76,337 +63,263 @@ export function bindUi(ctx, router) {
     elements.closeControls.addEventListener('click', () => setPanelOpen(false));
   }
 
-  // --- Range Controls ---
-  elements.terrainRange.addEventListener('sl-input', (event) => {
+  // --- Navigation Hub & Search ---
+  const updateLocationReadout = () => {
     if (!ctx.map) return;
-    state.terrainExaggeration = Number(event.target.value);
-    elements.terrainValue.textContent = `${state.terrainExaggeration.toFixed(2)}x`;
-    scheduleTerrainUpdate(ctx);
+    const center = ctx.map.getCenter();
+    if (!center) return;
+    
+    const lat = center.lat;
+    const lng = center.lng;
+    
+    elements.coordsDms.textContent = `${toDMS(lat, true)}, ${toDMS(lng, false)}`;
+    
+    // Auto-fill coordinates if user isn't typing
+    if (document.activeElement !== elements.inputLat && document.activeElement !== elements.inputLng) {
+      elements.inputLat.value = lat.toFixed(4);
+      elements.inputLng.value = lng.toFixed(4);
+    }
+  };
+
+  elements.btnPinLocation.addEventListener('click', () => {
+    const lat = parseFloat(elements.inputLat.value);
+    const lng = parseFloat(elements.inputLng.value);
+    const place = elements.inputPlace.value.trim();
+
+    if (place) {
+      // Basic place search among featured locations
+      const found = FEATURED_LOCATIONS.find(l => l.title.toLowerCase().includes(place.toLowerCase()));
+      if (found) {
+        flyToLocation(ctx, found);
+        return;
+      }
+    }
+
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      ctx.map.flyTo({
+        center: [lng, lat],
+        zoom: 12,
+        duration: 1.5
+      });
+    }
+  });
+
+  // --- Range Controls & Resets ---
+  elements.btnResetZoom.addEventListener('click', () => {
+    ctx.map?.flyTo({ zoom: 2, duration: 1.0 });
+  });
+
+  elements.btnResetPitch.addEventListener('click', () => {
+    schedulePitchUpdate(ctx, 0);
+  });
+
+  elements.btnResetFov.addEventListener('click', () => {
+    state.fov = 70;
+    if (ctx.viewer) {
+      ctx.viewer.camera.frustum.fov = (70 * Math.PI) / 180;
+    }
+    elements.fovRange.value = 70;
+    elements.fovValue.textContent = '70°';
+  });
+
+  elements.zoomRange.addEventListener('sl-input', (event) => {
+    if (!ctx.map) return;
+    const zoom = Number(event.target.value);
+    ctx.map.jumpTo({ zoom });
   });
 
   elements.pitchRange.addEventListener('sl-input', (event) => {
     if (!ctx.map) return;
     const pitch = Number(event.target.value);
-    elements.pitchValue.textContent = `${pitch.toFixed(0)} deg`;
     schedulePitchUpdate(ctx, pitch);
   });
 
-  // --- Shoelace Switches ---
-  
-  // Real-time Terminator & Night Lights Logic
-  const updateLightingUI = () => {
+  elements.fovRange.addEventListener('sl-input', (event) => {
     if (!ctx.map) return;
-    const isRealtime = elements.lightRealtime.checked;
-    state.realtimeLightingEnabled = isRealtime;
-    
-    if (isRealtime) {
-      elements.dayNightContainer.classList.add('disabled');
-      elements.lightToggle.disabled = true;
-    } else {
-      elements.dayNightContainer.classList.remove('disabled');
-      elements.lightToggle.disabled = false;
-      state.lighting = elements.lightToggle.checked ? 'night' : 'day';
+    const val = Number(event.target.value);
+    if (isNaN(val) || val <= 0) return; // Prevent 0 or NaN FOV
+    state.fov = val;
+    elements.fovValue.textContent = `${state.fov}°`;
+    if (ctx.viewer) {
+      ctx.viewer.camera.frustum.fov = (state.fov * Math.PI) / 180;
     }
-    applyLighting(ctx);
-  };
-
-  elements.lightRealtime.addEventListener('sl-change', updateLightingUI);
-  
-  elements.lightToggle.addEventListener('sl-change', (event) => {
-    if (!ctx.map) return;
-    state.lighting = event.target.checked ? 'night' : 'day';
-    applyLighting(ctx);
   });
 
-  // Views (Dark Matter View toggle switches between Dark and Satellite basemaps)
+  // --- Core Toggles ---
   elements.viewDark.addEventListener('sl-change', (event) => {
     if (!ctx.map) return;
     const view = event.target.checked ? VIEW.DARK : VIEW.SATELLITE;
     switchView(ctx, view);
   });
 
-  // Projection
   elements.projToggle.addEventListener('sl-change', (event) => {
     if (!ctx.map) return;
     state.projection = event.target.checked ? 'globe' : 'flat';
-    resetPitchToZero(ctx);
-
-    // Flat projection: force-disable atmosphere (and lock the toggle).
-    if (state.projection === 'flat') {
-      state.atmosphereEnabled = false;
-      if (elements.atmosToggle) {
-        elements.atmosToggle.checked = false;
-        elements.atmosToggle.disabled = true;
-      }
-    } else {
-      // Re-enable atmosphere toggle when returning to globe unless Dark view locks it.
-      if (elements.atmosToggle && state.currentView !== VIEW.DARK) {
-        elements.atmosToggle.disabled = false;
-      }
-    }
-
+    schedulePitchUpdate(ctx, 0);
     applyCommonScene(ctx);
     syncProjectionState(ctx);
+    syncLightingAvailability();
   });
 
-  // Layers
-  elements.labelsToggle.addEventListener('sl-change', (event) => {
-    if (!ctx.map) return;
-    state.labelsVisible = event.target.checked;
-    setOverlayVisibility(ctx, state.labelsVisible);
-    syncToggleState(ctx);
+  elements.lightRealtime.addEventListener('sl-change', () => {
+    state.realtimeLightingEnabled = elements.lightRealtime.checked;
+    applyLighting(ctx);
+    syncLightingAvailability();
   });
 
-  elements.cloudsToggle.addEventListener('sl-change', (event) => {
-    if (!ctx.map) return;
-    setCloudsEnabled(ctx, event.target.checked);
+  elements.lightToggle.addEventListener('sl-change', (event) => {
+    state.lighting = event.target.checked ? 'night' : 'day';
+    applyLighting(ctx);
   });
 
+  // Environment
   elements.atmosToggle.addEventListener('sl-change', (event) => {
-    if (!ctx.map) return;
     state.atmosphereEnabled = event.target.checked;
     applyCommonScene(ctx);
   });
 
+  elements.cloudsToggle.addEventListener('sl-change', (event) => {
+    setCloudsEnabled(ctx, event.target.checked);
+  });
+
   elements.spinToggle.addEventListener('sl-change', (event) => {
-    if (!ctx.map) return;
     state.autoSpin = event.target.checked;
-    resetPitchToZero(ctx);
-    if (state.autoSpin) {
-      scheduleSpin(ctx);
-    } else if (state.spinTimeout) {
-      window.clearTimeout(state.spinTimeout);
-    }
+    if (state.autoSpin) scheduleSpin(ctx);
+    else if (state.spinTimeout) window.clearTimeout(state.spinTimeout);
   });
 
-  // --- Tool Buttons (Top Right) ---
-  elements.btnCapture.addEventListener('click', () => {
-    if (!ctx.map) return;
-    try {
-      // Force a repaint to ensure the drawing buffer is populated
-      const originalScale = ctx.viewer.resolutionScale;
-      ctx.viewer.resolutionScale = 2.5; // Boost resolution for capture
-      
-      ctx.map.triggerRepaint();
-      
-      // Capture after the next render cycle to ensure we don't get a blank/cleared buffer
-      ctx.map.once('render', () => {
-        const canvas = ctx.map.getCanvas();
-
-        const out = document.createElement('canvas');
-        out.width = canvas.width;
-        out.height = canvas.height;
-        const g = out.getContext('2d', { alpha: false });
-        if (g) {
-          g.fillStyle = '#000';
-          g.fillRect(0, 0, out.width, out.height);
-          g.drawImage(canvas, 0, 0);
-        }
-        const dataUrl = (g ? out : canvas).toDataURL('image/png', 1.0);
-
-        const link = document.createElement('a');
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-        link.download = `twin-earth-uhd-${timestamp}.png`;
-        link.href = dataUrl;
-        link.click();
-        
-        ctx.viewer.resolutionScale = originalScale;
-        ctx.map.triggerRepaint();
-        
-        elements.status.textContent = 'Ultra HD Snapshot saved.';
-        elements.status.classList.remove('is-hidden');
-        window.setTimeout(() => elements.status.classList.add('is-hidden'), 2500);
-      });
-    } catch (e) {
-      console.error('Capture failed:', e);
-      alert('Failed to capture screen.');
-    }
+  // Terrain
+  elements.terrainToggle.addEventListener('sl-change', (event) => {
+    state.terrainEnabled = event.target.checked;
+    ctx.map.emit('cesium-refresh-terrain');
   });
 
-  // --- Navigation Controls (Right Side) ---
-  const nudgeZoom = (delta) => {
-    if (!ctx.map) return;
-    const current = Number(ctx.map.getZoom?.() ?? 2);
-    const next = current + delta;
-    try {
-      ctx.map.flyTo?.({ zoom: next, duration: 0.4 });
-    } catch (e) {
-      try {
-        ctx.map.jumpTo?.({ zoom: next });
-      } catch {}
-    }
+  elements.buildingsToggle.addEventListener('sl-change', (event) => {
+    state.buildingsEnabled = event.target.checked;
+    ctx.map.emit('cesium-refresh-terrain');
+  });
+
+  elements.waterToggle.addEventListener('sl-change', (event) => {
+    state.waterMaskEnabled = event.target.checked;
+    ctx.map.emit('cesium-refresh-terrain');
+  });
+
+  const syncLightingAvailability = () => {
+    const isGlobe = state.projection === 'globe';
+    elements.dayNightContainer.classList.toggle('disabled', isGlobe);
+    elements.lightRealtime.disabled = isGlobe;
+    elements.lightToggle.disabled = isGlobe;
   };
 
-  elements.btnZoomIn.addEventListener('click', () => nudgeZoom(+0.6));
-  elements.btnZoomOut.addEventListener('click', () => nudgeZoom(-0.6));
+  // --- Locations Grid ---
+  const renderLocations = () => {
+    elements.locations.innerHTML = FEATURED_LOCATIONS.map(loc => `
+      <button class="loc-btn" data-location-id="${loc.id}">
+        ${loc.title}
+      </button>
+    `).join('');
+  };
 
-  elements.btnResetNorth.addEventListener('click', () => {
-    if (!ctx.map) return;
-    // Reset both bearing (north up) and pitch (top-down view).
-    try {
-      ctx.map.easeTo?.({ bearing: 0, pitch: 0, duration: 0.5 });
-    } catch (e) {
-      try {
-        ctx.map.jumpTo?.({ bearing: 0, pitch: 0 });
-      } catch {}
-    }
-    // Sync the pitch slider UI.
-    try {
-      if (elements.pitchRange) elements.pitchRange.value = 0;
-      if (elements.pitchValue) elements.pitchValue.textContent = '0 deg';
-      if (ctx.cameraController?.setPitch) ctx.cameraController.setPitch(0);
-    } catch (e) {}
+  elements.locations.addEventListener('click', (event) => {
+    const btn = event.target.closest('[data-location-id]');
+    if (!btn) return;
+    const loc = findLocationById(btn.dataset.locationId);
+    if (loc) flyToLocation(ctx, loc);
   });
 
-  elements.btnFullscreen.addEventListener('click', async () => {
-    const target = ctx.map?.getContainer?.() ?? document.documentElement;
-    try {
-      if (document.fullscreenElement) {
-        await document.exitFullscreen();
-      } else if (target?.requestFullscreen) {
-        await target.requestFullscreen();
-      }
-    } catch (e) {}
+  // --- Map Event Sync ---
+  if (ctx.map) {
+    ctx.map.on('move', () => {
+      updateLocationReadout();
+      
+      const zoom = ctx.map.getZoom();
+      elements.zoomRange.value = zoom;
+      elements.zoomValue.textContent = zoom.toFixed(1);
+      
+      const pitch = ctx.map.getPitch();
+      elements.pitchRange.value = pitch;
+      elements.pitchValue.textContent = `${Math.round(pitch)}°`;
+    });
+  }
+
+  // --- Initial Sync ---
+  ctx.syncUiToState = () => {
+    elements.viewDark.checked = state.currentView === VIEW.DARK;
+    elements.projToggle.checked = state.projection === 'globe';
+    elements.lightRealtime.checked = state.realtimeLightingEnabled;
+    elements.lightToggle.checked = state.lighting === 'night';
+    
+    elements.atmosToggle.checked = state.atmosphereEnabled;
+    elements.cloudsToggle.checked = state.cloudsEnabled;
+    elements.spinToggle.checked = state.autoSpin;
+    
+    elements.terrainToggle.checked = state.terrainEnabled;
+    elements.buildingsToggle.checked = state.buildingsEnabled;
+    elements.waterToggle.checked = state.waterMaskEnabled;
+    
+    elements.fovRange.value = state.fov;
+    elements.fovValue.textContent = `${state.fov}°`;
+    
+    syncLightingAvailability();
+    renderLocations();
+    updateLocationReadout();
+  };
+
+  // --- Other Tools ---
+  elements.btnCapture.addEventListener('click', () => {
+    if (!ctx.map) return;
+    
+    elements.status.textContent = 'Capturing high-res view...';
+    
+    const originalScale = ctx.viewer?.resolutionScale || 1.0;
+    // Boost to 1.5x for high clarity without crashing the GPU
+    if (ctx.viewer) ctx.viewer.resolutionScale = 1.5; 
+    
+    ctx.map.triggerRepaint();
+    ctx.map.once('render', () => {
+      const canvas = ctx.map.getCanvas();
+      const out = document.createElement('canvas');
+      out.width = canvas.width; 
+      out.height = canvas.height;
+      const g = out.getContext('2d');
+      if (g) g.drawImage(canvas, 0, 0);
+      
+      const dataUrl = out.toDataURL('image/png');
+      
+      // Restore
+      if (ctx.viewer) ctx.viewer.resolutionScale = originalScale;
+      
+      const link = document.createElement('a');
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      link.download = `earth-twin-${timestamp}.png`;
+      link.href = dataUrl;
+      link.click();
+      
+      elements.status.textContent = 'Snapshot saved.';
+      setTimeout(() => { elements.status.textContent = 'Ready'; }, 2000);
+    });
+  });
+
+  elements.btnFullscreen.addEventListener('click', () => {
+    if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+    else document.exitFullscreen();
+  });
+
+  elements.btnResetNorth.addEventListener('click', () => {
+    ctx.map?.flyTo({ bearing: 0, pitch: 0, duration: 1.0 });
   });
 
   elements.btnLockAxis.addEventListener('click', () => {
-    if (!ctx.map) return;
     state.fixedAxis = !state.fixedAxis;
-    const isLocked = state.fixedAxis;
-
-    elements.btnLockAxis.classList.toggle('is-active', isLocked);
-
-    const ssc = ctx.viewer?.scene?.screenSpaceCameraController;
-    const CesiumRef = ctx.Cesium;
-
-    if (isLocked) {
-      // Fix the rotation axis to Earth's north-south pole (UNIT_Z).
-      // This is the same constraint Cesium applies by default, which keeps
-      // north always "up" and makes the camera self-correct its orientation.
-      if (ssc && CesiumRef) {
-        try { ssc.constrainedAxis = CesiumRef.Cartesian3.UNIT_Z; } catch (e) {}
-      }
-
-      // Snap bearing to north and pitch to zero so the axis is cleanly aligned on lock.
-      try { ctx.map.jumpTo({ bearing: 0, pitch: 0 }); } catch (e) {}
-      try {
-        if (elements.pitchRange) elements.pitchRange.value = 0;
-        if (elements.pitchValue) elements.pitchValue.textContent = '0 deg';
-        if (ctx.cameraController?.setPitch) ctx.cameraController.setPitch(0);
-      } catch (e) {}
-
-      // Enforce: keep bearing at 0 while axis is locked so dragging can't
-      // rotate the camera off-axis.
-      if (ctx._fixedAxisEnforcer) {
-        try { ctx.map.off('move', ctx._fixedAxisEnforcer); } catch (e) {}
-        try { ctx.map.off('rotate', ctx._fixedAxisEnforcer); } catch (e) {}
-      }
-      ctx._fixedAxisEnforcer = () => {
-        if (!state.fixedAxis) return;
-        try {
-          const b = ctx.map.getBearing?.() ?? 0;
-          if (Math.abs(b) > 0.1) ctx.map.jumpTo?.({ bearing: 0 });
-        } catch (e) {}
-      };
-      try { ctx.map.on('move', ctx._fixedAxisEnforcer); } catch (e) {}
-      try { ctx.map.on('rotate', ctx._fixedAxisEnforcer); } catch (e) {}
-
-      elements.status.textContent = 'Axis Locked (North Up)';
-    } else {
-      // Remove the bearing enforcer.
-      if (ctx._fixedAxisEnforcer) {
-        try { ctx.map.off('move', ctx._fixedAxisEnforcer); } catch (e) {}
-        try { ctx.map.off('rotate', ctx._fixedAxisEnforcer); } catch (e) {}
-        ctx._fixedAxisEnforcer = null;
-      }
-
-      // Release the axis constraint so the camera can freely orbit in any direction.
-      if (ssc) {
-        try { ssc.constrainedAxis = undefined; } catch (e) {}
-      }
-
-      elements.status.textContent = 'Axis Free';
+    elements.btnLockAxis.classList.toggle('is-active', state.fixedAxis);
+    if (ctx.viewer) {
+      ctx.viewer.scene.screenSpaceCameraController.constrainedAxis = state.fixedAxis ? ctx.Cesium.Cartesian3.UNIT_Z : undefined;
     }
-
-    elements.status.classList.remove('is-hidden');
-    window.setTimeout(() => elements.status.classList.add('is-hidden'), 1500);
   });
 
-  // --- Compass bearing indicator ---
-  // Rotate the ▲ button to visually reflect the current camera heading.
-  const updateCompassRotation = () => {
-    if (!ctx.map) return;
-    try {
-      const bearing = ctx.map.getBearing?.() ?? 0;
-      elements.btnResetNorth.style.transform = `rotate(${-bearing}deg)`;
-    } catch (e) {}
-  };
-  // Run on every camera move event.
-  try { ctx.map?.on?.('move', updateCompassRotation); } catch (e) {}
-  // Initial sync.
-  updateCompassRotation();
+  elements.btnZoomIn.addEventListener('click', () => ctx.map?.flyTo({ zoom: ctx.map.getZoom() + 1 }));
+  elements.btnZoomOut.addEventListener('click', () => ctx.map?.flyTo({ zoom: ctx.map.getZoom() - 1 }));
 
-  // --- Geolocation ---
-  elements.btnGeolocation.addEventListener('click', () => {
-    if (!ctx.map) return;
-    if (!navigator.geolocation) {
-      alert('Geolocation is not supported by your browser');
-      return;
-    }
-
-    elements.btnGeolocation.loading = true;
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { longitude, latitude } = position.coords;
-        ctx.map.flyTo({
-          center: [longitude, latitude],
-          zoom: 14,
-          pitch: 0,
-          speed: 0.8,
-          essential: true
-        });
-        clampLatForGlobe(ctx);
-        elements.btnGeolocation.loading = false;
-        elements.status.textContent = 'Landed at your location.';
-        window.setTimeout(() => elements.status.classList.add('is-hidden'), 2000);
-      },
-      (error) => {
-        elements.btnGeolocation.loading = false;
-        alert(`Geolocation error: ${error.message}`);
-      }
-    );
-  });
-
-  // Locations Click
-  elements.locations.addEventListener('click', (event) => {
-    const button = event.target.closest('[data-location-id]');
-    if (!button) return;
-    const location = findLocationById(button.dataset.locationId);
-    if (location) flyToLocation(ctx, location);
-  });
-
-  // Initial Sync Logic
-  ctx.syncUiToState = () => {
-    updateLightingUI();
-    syncProjectionState(ctx);
-    syncViewState(ctx);
-    syncToggleState(ctx);
-    
-    // Explicitly sync extra toggles not handled by specific sync helpers
-    if (elements.atmosToggle) {
-      elements.atmosToggle.checked = state.atmosphereEnabled;
-    }
-    if (elements.cloudsToggle) {
-      elements.cloudsToggle.checked = state.cloudsEnabled;
-    }
-    if (elements.spinToggle) {
-      elements.spinToggle.checked = state.autoSpin;
-    }
-  };
-
-
-  if (ctx.map) {
-    ctx.syncUiToState();
-  }
+  renderLocations();
   setPanelOpen(false);
 }

@@ -17,13 +17,28 @@ const API_ITEMS = [
 ].filter((item) => typeof item.url === 'string' && item.url.length);
 
 export function renderApiInfo(ctx) {
-  const listEl = ctx?.elements?.apiList;
-  if (!listEl) return;
+  const tickerEl = ctx?.elements?.apiTickerContent;
+  if (!tickerEl) return;
 
-  listEl.innerHTML = API_ITEMS.map((item) => {
-    const safeName = String(item.name);
-    const safeUrl = String(item.url);
-    return `<li><span class="api-name">${safeName}</span><code class="api-url">${safeUrl}</code></li>`;
-  }).join('');
+  if (ctx.apiTickerInterval) {
+    clearInterval(ctx.apiTickerInterval);
+  }
+
+  let index = 0;
+  const updateTicker = () => {
+    const item = API_ITEMS[index];
+    if (!item) return;
+    
+    tickerEl.style.opacity = '0';
+    setTimeout(() => {
+      tickerEl.innerHTML = `<span class="ticker-name">${item.name}</span> <code class="ticker-url">${item.url}</code>`;
+      tickerEl.style.opacity = '1';
+    }, 400);
+
+    index = (index + 1) % API_ITEMS.length;
+  };
+
+  updateTicker();
+  ctx.apiTickerInterval = setInterval(updateTicker, 6000);
 }
 

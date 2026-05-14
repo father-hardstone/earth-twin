@@ -1,0 +1,9 @@
+{
+  "skyDarknessBrightness": 0,
+  "moonScale": 4.6,
+  "moonDistanceScale": 3.00,
+  "atmosphereThicknessScale": 2.4,
+  "atmosphereBrightnessShift": -0.05,
+  "atmosphereSaturationShift": 0.2,
+  "atmosphereHueShift": 0.0
+}

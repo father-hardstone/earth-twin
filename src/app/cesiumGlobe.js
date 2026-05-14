@@ -3,113 +3,64 @@ import {
   clamp, 
   deg, 
   rad, 
-  zoomToHeight, 
-  heightToZoom, 
-  cameraCenterLngLat, 
-  createEmitter 
+  createEmitter,
+  cameraCenterLngLat
 } from './cesiumUtils.js';
 import { addSunCameraLensEffect } from './sunPostProcess.js';
+import { loadTerrain, loadBuildings, updateTerrainExaggeration } from './cesiumAssets.js';
+import { configureAtmosphere, updateSkyboxFade } from './cesiumAtmosphere.js';
+import { configureInteraction, syncCameraToState } from './cesiumInteraction.js';
+import { createSkyBox, buildSkyboxFadeSources } from './cesiumSkybox.js';
+import { createScaledMoon } from './cesiumMoon.js';
+import { createMapAdapter } from './cesiumAdapter.js';
 
-/**
- * Creates a MapLibre-compatible adapter for the Cesium viewer.
- */
-function createMapAdapter(viewer, containerEl, emitter, fireMoveEndSoon) {
-  return {
-    __renderer: 'cesium',
-    getCenter() {
-      return cameraCenterLngLat(viewer.scene) ?? { lng: 0, lat: 0 };
-    },
-    getZoom() {
-      const h = viewer.scene.camera.positionCartographic?.height;
-      return heightToZoom(h);
-    },
-    getBearing() {
-      return deg(viewer.scene.camera.heading);
-    },
-    getPitch() {
-      const p = deg(viewer.scene.camera.pitch);
-      return clamp(p + 90, 0, 89.99);
-    },
-    getCanvas() {
-      return viewer.scene.canvas;
-    },
-    getContainer() {
-      return containerEl;
-    },
-    getCanvasContainer() {
-      return containerEl;
-    },
-    triggerRepaint() {
-      try {
-        viewer.scene.requestRender();
-      } catch (e) {}
-    },
-    on(event, handler) {
-      return emitter.on(event, handler);
-    },
-    off(event, handler) {
-      return emitter.off(event, handler);
-    },
-    once(event, handler) {
-      return emitter.once(event, handler);
-    },
-    jumpTo(opts = {}) {
-      const center = opts.center;
-      const lng = Array.isArray(center) ? Number(center[0]) : undefined;
-      const lat = Array.isArray(center) ? Number(center[1]) : undefined;
-      const bearing = Number.isFinite(opts.bearing) ? Number(opts.bearing) : undefined;
-      const pitch = Number.isFinite(opts.pitch) ? Number(opts.pitch) : undefined;
-      const zoom = Number.isFinite(opts.zoom) ? Number(opts.zoom) : undefined;
+// Import skybox images to let Vite handle the paths/loading
+import skyPX from '../assets/images/skybox_1/px.jpg';
+import skyNX from '../assets/images/skybox_1/nx.jpg';
+import skyPY from '../assets/images/skybox_1/py.jpg';
+import skyNY from '../assets/images/skybox_1/ny.jpg';
+import skyPZ from '../assets/images/skybox_1/pz.jpg';
+import skyNZ from '../assets/images/skybox_1/nz.jpg';
 
-      const currentCenter = cameraCenterLngLat(viewer.scene) ?? { lng: 0, lat: 0 };
-      const targetLng = Number.isFinite(lng) ? lng : currentCenter.lng;
-      const targetLat = Number.isFinite(lat) ? lat : currentCenter.lat;
-      const targetHeight = Number.isFinite(zoom) ? zoomToHeight(zoom) : viewer.scene.camera.positionCartographic?.height;
+import starmap4 from '../assets/images/starmap_4.png';
+import viewSettings from '../config/viewSettings.json';
 
-      const targetPitchRad = pitch != null ? rad(clamp(pitch, 0, 89.99) - 90) : viewer.scene.camera.pitch;
-      const targetHeadingRad = bearing != null ? rad(bearing) : viewer.scene.camera.heading;
+const SKYBOX_DARKNESS_BRIGHTNESS = Number.isFinite(viewSettings?.skyDarknessBrightness)
+  ? Math.max(0, Math.min(1, viewSettings.skyDarknessBrightness))
+  : 0.1;
+const MOON_SCALE = Number.isFinite(viewSettings?.moonScale)
+  ? Math.max(0.1, viewSettings.moonScale)
+  : 1.25;
+const MOON_DISTANCE_SCALE = Number.isFinite(viewSettings?.moonDistanceScale)
+  ? Math.max(0.1, viewSettings.moonDistanceScale)
+  : 1.12;
+const ATMOSPHERE_BRIGHTNESS_SHIFT = Number.isFinite(viewSettings?.atmosphereBrightnessShift)
+  ? viewSettings.atmosphereBrightnessShift
+  : -0.15;
+const ATMOSPHERE_SATURATION_SHIFT = Number.isFinite(viewSettings?.atmosphereSaturationShift)
+  ? viewSettings.atmosphereSaturationShift
+  : -0.05;
+const ATMOSPHERE_HUE_SHIFT = Number.isFinite(viewSettings?.atmosphereHueShift)
+  ? viewSettings.atmosphereHueShift
+  : 0.0;
+const ATMOSPHERE_THICKNESS_SCALE = Number.isFinite(viewSettings?.atmosphereThicknessScale)
+  ? Math.max(0.2, viewSettings.atmosphereThicknessScale)
+  : 1.4;
+const SKYBOX_FADE_LEVELS = 24;
+const SKYBOX_FADE_OUT_SPEED = 2.4;
+const SKYBOX_FADE_IN_SPEED = 1.35;
+const SKYBOX_BRIGHT_HOLD_MS = 120;
+const SKYBOX_SOURCES_NORMAL = {
+  positiveX: skyNX, // x- is right
+  negativeX: skyPX, // x+ is left
+  positiveY: skyPY, // y+ is up
+  negativeY: skyNY, // y- is bottom
+  positiveZ: skyPZ, // z+ is front
+  negativeZ: skyNZ  // z- is back
+};
 
-      viewer.scene.camera.setView({
-        destination: Cesium.Cartesian3.fromDegrees(targetLng, targetLat, targetHeight, Cesium.Ellipsoid.WGS84),
-        orientation: {
-          heading: targetHeadingRad,
-          pitch: targetPitchRad,
-          roll: 0
-        }
-      });
-      emitter.emit('move');
-      fireMoveEndSoon();
-    },
-    flyTo(opts = {}) {
-      const center = opts.center;
-      const lng = Array.isArray(center) ? Number(center[0]) : undefined;
-      const lat = Array.isArray(center) ? Number(center[1]) : undefined;
-      const bearing = Number.isFinite(opts.bearing) ? Number(opts.bearing) : undefined;
-      const pitch = Number.isFinite(opts.pitch) ? Number(opts.pitch) : undefined;
-      const zoom = Number.isFinite(opts.zoom) ? Number(opts.zoom) : undefined;
 
-      const currentCenter = cameraCenterLngLat(viewer.scene) ?? { lng: 0, lat: 0 };
-      const targetLng = Number.isFinite(lng) ? lng : currentCenter.lng;
-      const targetLat = Number.isFinite(lat) ? lat : currentCenter.lat;
-      const targetHeight = Number.isFinite(zoom) ? zoomToHeight(zoom) : viewer.scene.camera.positionCartographic?.height;
-
-      viewer.scene.camera.flyTo({
-        destination: Cesium.Cartesian3.fromDegrees(targetLng, targetLat, targetHeight, Cesium.Ellipsoid.WGS84),
-        orientation: {
-          heading: bearing != null ? rad(bearing) : viewer.scene.camera.heading,
-          pitch: pitch != null ? rad(clamp(pitch, 0, 89.99) - 90) : viewer.scene.camera.pitch,
-          roll: 0
-        },
-        duration: 1.2
-      });
-    },
-    easeTo(opts = {}) {
-      return this.flyTo(opts);
-    }
-  };
-}
-
-export function initCesiumGlobe(ctx, containerEl, initialView) {
+export async function initCesiumGlobe(ctx, containerEl, initialView) {
   if (!containerEl) throw new Error('Missing Cesium container element');
 
   containerEl.innerHTML = '';
@@ -126,23 +77,48 @@ export function initCesiumGlobe(ctx, containerEl, initialView) {
     selectionIndicator: false,
     timeline: false,
     vrButton: false,
-    globe: new Cesium.Globe(Cesium.Ellipsoid.WGS84),
-    orderIndependentTranslucency: false,
-    contextOptions: {
-      webgl: {
-        alpha: false,
-        antialias: true,
-        preserveDrawingBuffer: true
-      }
-    }
+    globe: new Cesium.Globe(Cesium.Ellipsoid.WGS84)
   });
 
-  // Ultra HD Visuals
-  viewer.resolutionScale = window.devicePixelRatio || 1.0;
-  viewer.scene.msaaSamples = 4; // High-quality anti-aliasing
-  viewer.scene.postProcessStages.fxaa.enabled = true;
-  viewer.scene.globe.maximumScreenSpaceError = 1.2; // High terrain/imagery detail
-  viewer.scene.highDynamicRange = false;
+  // Performance & Quality Optimization Pipeline
+  viewer.resolutionScale = window.devicePixelRatio || 1.0; 
+  viewer.scene.globe.maximumScreenSpaceError = 2.5; // Balanced for 3060 clarity vs performance
+  viewer.scene.globe.preloadAncestors = true; // Surface textures load first
+  viewer.scene.globe.tileCacheSize = 1024; // High cache for smooth fly-bys
+  viewer.scene.globe.depthTestAgainstTerrain = true;
+
+  // Interaction & Controls Setup
+  configureInteraction(viewer);
+
+  let buildings = null;
+  const refreshTerrain = async () => {
+    // 1. Terrain & Water Mask
+    if (ctx.state.terrainEnabled) {
+      await loadTerrain(viewer, ctx.state.waterMaskEnabled);
+    } else {
+      viewer.terrainProvider = new Cesium.EllipsoidTerrainProvider();
+    }
+
+    // 2. 3D Buildings
+    if (!buildings) {
+      buildings = await loadBuildings(viewer);
+    }
+    if (buildings) {
+      buildings.show = ctx.state.buildingsEnabled;
+    }
+    
+    updateTerrainExaggeration(viewer, ctx.state.terrainExaggeration || 1.15);
+  };
+
+  // Initial load
+  refreshTerrain();
+
+  // UHD Visuals (Tuned for Skybox clarity and maximum sharpness)
+  viewer.resolutionScale = 1.0; 
+  viewer.scene.msaaSamples = 1; // Disabled per user request
+  viewer.scene.postProcessStages.fxaa.enabled = false; // Disabled per user request
+  viewer.scene.globe.maximumScreenSpaceError = 1.0;
+  viewer.scene.globe.tileCacheSize = 256;
 
   // Lighting & Sun
   viewer.clock.currentTime = Cesium.JulianDate.now();
@@ -154,24 +130,107 @@ export function initCesiumGlobe(ctx, containerEl, initialView) {
   viewer.scene.sunBloom = false;
   viewer.scene.sun.glowFactor = 0;
 
+  const moonTextureUrl = viewer.scene.moon?.textureUrl;
+  viewer.scene.moon = createScaledMoon(MOON_SCALE, MOON_DISTANCE_SCALE, moonTextureUrl);
   viewer.scene.moon.show = true;
-  viewer.scene.skyAtmosphere.show = true;
+  // Natural Palette: Improved horizon fade to remove "plastic" feel
+  configureAtmosphere(viewer, {
+    thicknessScale: ATMOSPHERE_THICKNESS_SCALE,
+    rayleigh: new Cesium.Cartesian3(4.5e-6, 11.5e-6, 28.0e-6),
+    mie: new Cesium.Cartesian3(25e-6, 25e-6, 25e-6),
+    anisotropy: 0.85 // Reduced anisotropy for a more natural horizon glow
+  });
+  
+  viewer.scene.skyAtmosphere.brightnessShift = ATMOSPHERE_BRIGHTNESS_SHIFT;
+  viewer.scene.skyAtmosphere.saturationShift = ATMOSPHERE_SATURATION_SHIFT;
+  viewer.scene.skyAtmosphere.hueShift = ATMOSPHERE_HUE_SHIFT;
+  viewer.scene.globe.terrainExaggeration = ctx.state.terrainExaggeration || 1.15;
+  viewer.scene.globe.baseColor = Cesium.Color.fromCssColorString('#0d1626'); // Deep oceanic base
+
+
+  // --- High-Resolution Cube Map Starfield (skybox_1) ---
+  viewer.scene.skyBox = createSkyBox(SKYBOX_SOURCES_NORMAL);
   viewer.scene.skyBox.show = true;
+
+  let skyboxFadeSources = null;
+  let skyboxFadeBoxes = null;
+  let skyboxFade = 1.0;
+  let skyboxFadeTarget = 1.0;
+  let skyboxFadeIndex = SKYBOX_FADE_LEVELS;
+  let raysVisible = false;
+  let lastRaysVisibleAt = 0;
+  const applySkyboxState = () => {
+    skyboxFadeIndex = updateSkyboxFade(viewer, {
+      skyboxFade,
+      skyboxFadeBoxes,
+      skyboxFadeIndex,
+      SKYBOX_FADE_LEVELS
+    });
+  };
+
+  buildSkyboxFadeSources(SKYBOX_SOURCES_NORMAL, SKYBOX_FADE_LEVELS, SKYBOX_DARKNESS_BRIGHTNESS)
+    .then((sources) => {
+      skyboxFadeSources = sources;
+      skyboxFadeBoxes = sources.map((item) => createSkyBox(item));
+      applySkyboxState();
+    })
+    .catch(() => {
+      skyboxFadeSources = [SKYBOX_SOURCES_NORMAL];
+      skyboxFadeBoxes = [createSkyBox(SKYBOX_SOURCES_NORMAL)];
+      skyboxFade = 1.0;
+      skyboxFadeIndex = -1; // Force first apply
+      applySkyboxState();
+    });
+
+  // --- Alternative: High-Resolution Equirectangular Starfield (starmap_4) ---
+  /*
+  viewer.scene.skyBox.show = false;
+  const starfieldPrimitive = new Cesium.Primitive({
+    // ... (rest of the code)
+  });
+  */
 
   // Add Sun Camera Lens Effect
   const lensTime0 = performance.now() / 1000;
   try {
-    addSunCameraLensEffect(viewer, lensTime0);
+    addSunCameraLensEffect(viewer, lensTime0, (visible) => {
+      raysVisible = !!visible;
+      if (raysVisible) {
+        lastRaysVisibleAt = performance.now();
+        viewer.scene.moon.show = true;
+      }
+    });
   } catch (e) {
     console.warn('Could not add sun camera lens stage:', e);
   }
 
   // Camera constraints
   try {
-    viewer.scene.screenSpaceCameraController.enableCollisionDetection = true;
-    viewer.scene.screenSpaceCameraController.minimumZoomDistance = 120.0;
-    viewer.scene.screenSpaceCameraController.maximumZoomDistance = 40_000_000.0;
+    const cameraController = viewer.scene.screenSpaceCameraController;
+    cameraController.enableCollisionDetection = true;
+    cameraController.minimumZoomDistance = 120.0;
+    cameraController.maximumZoomDistance = 100_000_000.0;
+
+    // Enable RMB camera actions for smooth native tilting.
+    cameraController.tiltEventTypes = [
+      Cesium.CameraEventType.RIGHT_DRAG,
+      Cesium.CameraEventType.MIDDLE_DRAG,
+      { eventType: Cesium.CameraEventType.LEFT_DRAG, modifier: Cesium.KeyboardEventModifier.CTRL }
+    ];
+    cameraController.lookEventTypes = [];
+    cameraController.zoomEventTypes = [
+      Cesium.CameraEventType.WHEEL,
+      Cesium.CameraEventType.PINCH
+    ];
+
+    // Ensure the camera remains upright to prevent "violent spinning" at poles.
+    cameraController.constrainedAxis = Cesium.Cartesian3.UNIT_Z;
   } catch (e) {}
+
+  // Apply initial FOV from state
+  if (ctx.state && ctx.state.fov) {
+    viewer.camera.frustum.fov = (ctx.state.fov * Math.PI) / 180;
+  }
 
   const emitter = createEmitter();
   let destroyed = false;
@@ -190,34 +249,54 @@ export function initCesiumGlobe(ctx, containerEl, initialView) {
 
   const mapAdapter = createMapAdapter(viewer, containerEl, emitter, fireMoveEndSoon);
 
+  // Interaction Sync
+  mapAdapter.on('cesium-refresh-terrain', () => {
+    refreshTerrain();
+  });
+
+  // FPS Monitor and Render Loop
+  let lastFpsUpdate = 0;
+  let frameCount = 0;
   const postRenderUnsub = viewer.scene.postRender.addEventListener(() => {
     if (destroyed) return;
+
+    // FPS Counter
+    frameCount++;
+    const now = performance.now();
+    if (now - lastFpsUpdate > 1000) {
+      const fps = Math.round((frameCount * 1000) / (now - lastFpsUpdate));
+      if (ctx.elements.fpsMonitor) {
+        ctx.elements.fpsMonitor.textContent = `${fps} FPS`;
+        // Color coding for visual feedback
+        if (fps >= 55) ctx.elements.fpsMonitor.style.color = 'rgba(100, 255, 100, 0.5)';
+        else if (fps >= 30) ctx.elements.fpsMonitor.style.color = 'rgba(255, 255, 100, 0.5)';
+        else ctx.elements.fpsMonitor.style.color = 'rgba(255, 100, 100, 0.5)';
+      }
+      frameCount = 0;
+      lastFpsUpdate = now;
+    }
+
     emitter.emit('render');
 
+    const keepDark = raysVisible || (now - lastRaysVisibleAt) < SKYBOX_BRIGHT_HOLD_MS;
+    skyboxFadeTarget = keepDark ? 0.0 : 1.0;
+    const fadeSpeed = skyboxFadeTarget < skyboxFade ? SKYBOX_FADE_OUT_SPEED : SKYBOX_FADE_IN_SPEED;
+    const step = Math.max(0.01, fadeSpeed / 60);
+    if (skyboxFade < skyboxFadeTarget) {
+      skyboxFade = Math.min(skyboxFadeTarget, skyboxFade + step);
+      applySkyboxState();
+    } else if (skyboxFade > skyboxFadeTarget) {
+      skyboxFade = Math.max(skyboxFadeTarget, skyboxFade - step);
+      applySkyboxState();
+    }
+
+    // Synchronize camera state with UI (Pitch, Zoom, etc.)
+    syncCameraToState(viewer, ctx.state, emitter);
+
+    // Fire moveend events for secondary logic
     const c = cameraCenterLngLat(viewer.scene);
-    const height = viewer.scene.camera.positionCartographic?.height;
-    const zoom = Number.isFinite(height) ? heightToZoom(height) : lastZoom ?? 2;
-    const headingDeg = deg(viewer.scene.camera.heading);
-    const pitchDeg = deg(viewer.scene.camera.pitch);
-    const heading = Number.isFinite(headingDeg) ? headingDeg : lastHeading ?? 0;
-    const pitch = Number.isFinite(pitchDeg) ? pitchDeg : lastPitch ?? 0;
-
-    const changed =
-      (!lastCenter && c) ||
-      (lastCenter && c && (Math.abs(lastCenter.lng - c.lng) > 1e-6 || Math.abs(lastCenter.lat - c.lat) > 1e-6)) ||
-      (lastZoom == null || Math.abs(lastZoom - zoom) > 1e-4) ||
-      (lastHeading == null || Math.abs(lastHeading - heading) > 1e-4) ||
-      (lastPitch == null || Math.abs(lastPitch - pitch) > 1e-4);
-
-    if (changed) {
-      lastCenter = c ?? lastCenter;
-      lastZoom = zoom;
-      lastHeading = heading;
-      lastPitch = pitch;
-      emitter.emit('move');
-      emitter.emit('zoom');
-      emitter.emit('rotate');
-      emitter.emit('pitch');
+    if (c && (!lastCenter || Math.abs(lastCenter.lng - c.lng) > 1e-6 || Math.abs(lastCenter.lat - c.lat) > 1e-6)) {
+      lastCenter = c;
       fireMoveEndSoon();
     }
   });
@@ -236,7 +315,7 @@ export function initCesiumGlobe(ctx, containerEl, initialView) {
     const v = initialView || {};
     mapAdapter.jumpTo({
       center: [v.lng ?? 0, v.lat ?? 0],
-      zoom: v.zoom ?? 2,
+      zoom: v.zoom ?? 0,
       bearing: v.bearing ?? 0,
       pitch: v.pitch ?? 0
     });

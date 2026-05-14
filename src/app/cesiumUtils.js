@@ -18,13 +18,13 @@ export function smoothstep(edge0, edge1, x) {
 }
 
 export function zoomToHeight(zoom) {
-  const z = clamp(Number(zoom ?? 2), 0.2, 20);
-  return clamp(20_000_000 / 2 ** z, 120, 40_000_000);
+  const z = clamp(Number(zoom ?? 0), -2, 20);
+  return clamp(20_000_000 / 2 ** z, 120, 100_000_000);
 }
 
 export function heightToZoom(height) {
-  const h = clamp(Number(height ?? 20_000_000), 120, 40_000_000);
-  return clamp(Math.log2(20_000_000 / h), 0.2, 20);
+  const h = clamp(Number(height ?? 20_000_000), 120, 100_000_000);
+  return clamp(Math.log2(20_000_000 / h), -2, 20);
 }
 
 export function cameraCenterLngLat(scene) {
